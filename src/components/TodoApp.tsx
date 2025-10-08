@@ -290,7 +290,7 @@ export default function TodoApp() {
         >
           <div className="p-6">
             <div 
-              className={`flex items-center border-t-2 border-b-2 border-dashed border-gray-300 py-2 ${getPriorityStyle(inputPriority)} rounded-md`}
+              className={`flex items-center border-t-2 border-b-2 border-dashed border-gray-300 py-2 ${getPriorityStyle(inputPriority)}`}
               style={{ paddingLeft: getDepthPadding(inputDepth) }}
             >
               <div className="flex items-center text-gray-400 mr-2">
