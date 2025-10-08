@@ -1,4 +1,5 @@
 import { useState, useEffect, KeyboardEvent } from 'react'
+import { Eraser } from 'lucide-react'
 
 type Priority = 'emergency' | 'urgent' | 'normal' | 'low'
 
@@ -90,6 +91,30 @@ export default function TodoApp() {
     }
     
     updateParentCompletion(updated)
+    setTodos(updated)
+  }
+
+  const deleteTodo = (id: string) => {
+    const updated = [...todos]
+    const todoIndex = updated.findIndex(todo => todo.id === id)
+    const todoToDelete = updated[todoIndex]
+    
+    // 삭제할 할 일과 모든 하위 자식들 찾기
+    const toDelete: number[] = [todoIndex]
+    
+    for (let i = todoIndex + 1; i < updated.length; i++) {
+      const todo = updated[i]
+      if (todo.depth <= todoToDelete.depth) break
+      if (todo.depth > todoToDelete.depth) {
+        toDelete.push(i)
+      }
+    }
+    
+    // 인덱스 역순으로 삭제 (뒤에서부터 삭제해야 인덱스가 안 꼬임)
+    toDelete.reverse().forEach(index => {
+      updated.splice(index, 1)
+    })
+    
     setTodos(updated)
   }
 
@@ -249,10 +274,10 @@ export default function TodoApp() {
         >
           <div className="p-6">
             <div className="space-y-0">
-              {sortedTodos.map((todo, index) => (
+              {sortedTodos.map((todo) => (
                 <div 
                   key={todo.id}
-                  className={`flex items-center py-3 hover:bg-gray-50 border-b-2 border-dashed border-gray-200 ${getPriorityStyle(todo.priority)}`}
+                  className={`group flex items-center py-3 hover:bg-gray-50 border-b-2 border-dashed border-gray-200 ${getPriorityStyle(todo.priority)}`}
                   style={{ paddingLeft: getDepthPadding(todo.depth) }}
                 >
                   <div className="flex items-center text-gray-400 mr-3">
@@ -274,6 +299,13 @@ export default function TodoApp() {
                   >
                     {todo.text}
                   </span>
+                  <button
+                    onClick={() => deleteTodo(todo.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full"
+                    title="삭제"
+                  >
+                    <Eraser className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>
