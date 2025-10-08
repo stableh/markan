@@ -229,8 +229,9 @@ export default function TodoApp() {
           </button>
         </div>
 
+        {/* TodoList - 완료된 할 일들이 표시되는 영역 */}
         <div 
-          className="bg-white rounded-lg shadow-lg border-2 border-gray-300"
+          className="bg-white rounded-lg shadow-lg border-2 border-gray-300 mb-4"
           style={{
             boxShadow: '0 8px 25px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)',
             background: `
@@ -241,12 +242,13 @@ export default function TodoApp() {
                 #e5e7eb 30px,
                 #e5e7eb 31px
               )
-            `
+            `,
+            maxHeight: '400px',
+            overflowY: 'auto'
           }}
         >
           <div className="p-6">
-            {/* TodoList - 완료된 할 일들이 표시되는 영역 */}
-            <div className="space-y-0 mb-4">
+            <div className="space-y-0">
               {sortedTodos.map((todo, index) => (
                 <div 
                   key={todo.id}
@@ -275,36 +277,44 @@ export default function TodoApp() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
 
-            {/* TodoInput - 새로운 할 일을 입력하는 영역 */}
-            <div className="border-gray-300 pt-4">
-              <div 
-                className={`flex items-center border-t-2 border-b-2 border-dashed border-gray-300 py-2 ${getPriorityStyle(inputPriority)} rounded-md`}
-                style={{ paddingLeft: getDepthPadding(inputDepth) }}
-              >
-                <div className="flex items-center text-gray-400 mr-2">
-                  {Array.from({ length: inputDepth + 1 }, (_, i) => (
-                    <div key={i} className="w-2 h-2 bg-gray-400 rounded-full mx-1" />
-                  ))}
-                </div>
-                <span className={`text-sm font-bold mr-2 min-w-12 text-center ${getPriorityTextStyle(inputPriority)} bg-white rounded px-1`}>
-                  [{getPriorityLabel(inputPriority)}]
-                </span>
-                <div className="w-px h-6 bg-gray-400 border-r border-dashed border-gray-400 mr-2"></div>
-                <input
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="할 일을 입력하세요..."
-                  className="flex-1 outline-none text-lg bg-transparent font-medium"
-                  autoFocus
-                />
+        {/* TodoInput - 새로운 할 일을 입력하는 영역 */}
+        <div 
+          className="bg-white rounded-lg shadow-lg border-2 border-gray-300"
+          style={{
+            boxShadow: '0 8px 25px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)',
+            background: 'linear-gradient(135deg, #ffffff 0%, #fefefe 100%)'
+          }}
+        >
+          <div className="p-6">
+            <div 
+              className={`flex items-center border-t-2 border-b-2 border-dashed border-gray-300 py-2 ${getPriorityStyle(inputPriority)} rounded-md`}
+              style={{ paddingLeft: getDepthPadding(inputDepth) }}
+            >
+              <div className="flex items-center text-gray-400 mr-2">
+                {Array.from({ length: inputDepth + 1 }, (_, i) => (
+                  <div key={i} className="w-2 h-2 bg-gray-400 rounded-full mx-1" />
+                ))}
               </div>
-              <p className="text-sm text-gray-600 mt-3 font-medium">
-                현재 깊이: {inputDepth + 1}단계 | Tab/Shift+Tab: 깊이 조절, ↑↓: 우선순위, Enter: 추가
-              </p>
+              <span className={`text-sm font-bold mr-2 min-w-12 text-center ${getPriorityTextStyle(inputPriority)} bg-white rounded px-1`}>
+                [{getPriorityLabel(inputPriority)}]
+              </span>
+              <div className="w-px h-6 bg-gray-400 border-r border-dashed border-gray-400 mr-2"></div>
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="할 일을 입력하세요..."
+                className="flex-1 outline-none text-lg bg-transparent font-medium"
+                autoFocus
+              />
             </div>
+            <p className="text-sm text-gray-600 mt-3 font-medium">
+              현재 깊이: {inputDepth + 1}단계 | Tab/Shift+Tab: 깊이 조절, ↑↓: 우선순위, Enter: 추가
+            </p>
           </div>
         </div>
       </div>
