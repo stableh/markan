@@ -147,10 +147,11 @@
   --sidebar-accent-foreground: oklch(0.90 0 0);
   --sidebar-border: oklch(0.35 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-
-  /* Selection Colors */
-  --selection-background: var(--primary);
-  --selection-foreground: var(--primary-foreground);
+ 
+  
+  /* Selection Colors - High Contrast for Dark Mode */
+  --selection-background: oklch(38.288% 0.00004 271.152); /* Blue */
+  --selection-foreground: oklch(0.98 0 0); /* White */
 }
 
 @layer base {
@@ -212,6 +213,12 @@
     color: var(--selection-foreground);
 }
 
+.milkdown-container .milkdown .ProseMirror *::selection {
+    background-color: var(--selection-background);
+    color: var(--selection-foreground);
+}
+
+/* 블록 선택(Drag Handle로 선택) 시 스타일 */
 .milkdown-container .milkdown .ProseMirror *::selection {
     background-color: var(--selection-background);
     color: var(--selection-foreground);
