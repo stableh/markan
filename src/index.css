@@ -184,6 +184,9 @@
     stroke: none;       /* 외곽선 제거 */
 }
 
+.milkdown-container .milkdown {
+
+}
 /* 단, 일부 아이콘이 Stroke 기반일 수 있으므로 예외 처리 필요할 수 있음 */
 /* 만약 아이콘이 깨져 보인다면 이 부분을 stroke: currentColor; fill: none; 으로 변경해야 함 */
 
