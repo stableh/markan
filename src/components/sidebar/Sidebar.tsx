@@ -44,11 +44,11 @@ export function Sidebar() {
               "group flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors text-sm",
               activeNoteId === note.id
                 ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
             )}
           >
             <div className="flex items-center gap-2 overflow-hidden">
-                <FileText size={16} className="shrink-0 opacity-70" />
+                <FileText size={16} className="shrink-0" />
                 <span className="truncate">{note.title || 'Untitled'}</span>
             </div>
             <button
@@ -67,14 +67,14 @@ export function Sidebar() {
       <div className="p-4 border-t border-sidebar-border space-y-1">
         <button 
             onClick={handleCopy}
-            className="w-full flex items-center gap-2 text-sidebar-foreground hover:bg-sidebar-accent px-3 py-2 rounded-md transition-colors text-sm cursor-pointer"
+            className="w-full flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent px-3 py-2 rounded-md transition-colors text-sm cursor-pointer"
         >
             <Copy size={16} />
             <span>Copy Markdown</span>
         </button>
         <button 
             onClick={toggleTheme}
-            className="w-full flex items-center gap-2 text-sidebar-foreground hover:bg-sidebar-accent px-3 py-2 rounded-md transition-colors text-sm cursor-pointer"
+            className="w-full flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent px-3 py-2 rounded-md transition-colors text-sm cursor-pointer"
         >
             {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
             <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>

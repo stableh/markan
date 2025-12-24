@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar/Sidebar';
+import { Toolbar } from '@/components/toolbar/Toolbar';
 import MilkdownEditorWrapper from '@/components/editor/MilkdownEditor';
 import { AIPanel } from '@/components/ai/AIPanel';
 import { useNoteStore } from '@/store/useNoteStore';
@@ -8,8 +9,7 @@ import { Toaster } from 'sonner';
 
 function App() {
   const { notes, activeNoteId, createNote, setActiveNote, updateNote, getActiveNote } = useNoteStore();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { theme } = useSettingsStore(); 
+  const { theme, isAIPanelOpen } = useSettingsStore(); 
 
   useEffect(() => {
     // Initialize if empty
@@ -30,21 +30,24 @@ function App() {
     <div className="flex h-screen w-screen bg-background text-foreground overflow-hidden">
       <Sidebar />
       
-      <main className="flex-1 flex flex-col h-full relative min-w-0 bg-background">
-        {activeNote ? (
-            <MilkdownEditorWrapper 
-                key={activeNote.id} // Force re-render on note switch
-                initialContent={activeNote.content}
-                onChange={(content) => updateNote(activeNote.id, content)}
-            />
-        ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                Loading...
-            </div>
-        )}
+      <main className="flex-1 flex flex-col h-full relative min-w-0 bg-background transition-all duration-300 ease-in-out">
+        <Toolbar />
+        <div className="flex-1 relative overflow-hidden">
+            {activeNote ? (
+                <MilkdownEditorWrapper 
+                    key={activeNote.id} // Force re-render on note switch
+                    initialContent={activeNote.content}
+                    onChange={(content) => updateNote(activeNote.id, content)}
+                />
+            ) : (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground h-full">
+                    Loading...
+                </div>
+            )}
+        </div>
       </main>
 
-      <AIPanel />
+      {isAIPanelOpen && <AIPanel />}
       <Toaster />
     </div>
   );

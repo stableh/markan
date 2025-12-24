@@ -108,6 +108,10 @@
   --sidebar-accent-foreground: oklch(0.25 0 0);
   --sidebar-border: oklch(0.92 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  
+  /* Selection Colors */
+  --selection-background: oklch(0.88 0.05 250); /* Light Blue */
+  --selection-foreground: oklch(0.25 0 0);
 }
 
 .dark {
@@ -143,6 +147,10 @@
   --sidebar-accent-foreground: oklch(0.90 0 0);
   --sidebar-border: oklch(0.35 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+
+  /* Selection Colors */
+  --selection-background: var(--primary);
+  --selection-foreground: var(--primary-foreground);
 }
 
 @layer base {
@@ -155,14 +163,30 @@
 }
 
 /* Milkdown / Crepe Overrides */
-:root {
+/* .milkdown 클래스 하위에 변수를 재정의하여 테마 변경이 즉시 반영되도록 수정 */
+.milkdown {
     --crepe-color-background: transparent;
     --crepe-color-on-background: var(--foreground);
     --crepe-color-surface: var(--card);
     --crepe-color-on-surface: var(--card-foreground);
     --crepe-color-primary: var(--primary);
     --crepe-color-on-primary: var(--primary-foreground);
+    
+    /* 아이콘 색상 제어 변수 (다크모드 대응) */
+    --crepe-color-outline: var(--muted-foreground); 
+    --crepe-color-hover: var(--accent);
+    --crepe-color-selected: var(--accent);
 }
+
+/* 아이콘이 테마 색상을 따르도록 강제 */
+.milkdown svg {
+    fill: currentColor; /* 아이콘을 채우기(Fill) 스타일로 변경 */
+    stroke: none;       /* 외곽선 제거 */
+}
+
+/* 단, 일부 아이콘이 Stroke 기반일 수 있으므로 예외 처리 필요할 수 있음 */
+/* 만약 아이콘이 깨져 보인다면 이 부분을 stroke: currentColor; fill: none; 으로 변경해야 함 */
+
 
 .milkdown-container .milkdown {
     height: 100%;
@@ -170,7 +194,8 @@
 }
 
 .milkdown-container .milkdown .ProseMirror {
-    padding: 2rem;
+    /* 왼쪽 패딩을 늘려 블록 핸들 공간 확보 (기존 4rem -> 좌우 8rem) */
+    padding: 2rem 8rem;
     min-height: 100%;
     outline: none;
     font-family: var(--font-display);
@@ -180,11 +205,11 @@
 
 /* 드래그 선택 영역 스타일 명시적 지정 */
 .milkdown-container .milkdown .ProseMirror ::selection {
-    background-color: var(--primary);
-    color: var(--primary-foreground);
+    background-color: var(--selection-background);
+    color: var(--selection-foreground);
 }
 
 .milkdown-container .milkdown .ProseMirror *::selection {
-    background-color: var(--primary);
-    color: var(--primary-foreground);
+    background-color: var(--selection-background);
+    color: var(--selection-foreground);
 }
