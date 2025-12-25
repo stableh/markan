@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-display: "system-ui", "sans-serif";
+  --font-display: "Pretendard Variable", "system-ui", "sans-serif";
   --color-primary: #3b82f6;
   --color-secondary: #6366f1;
 }
