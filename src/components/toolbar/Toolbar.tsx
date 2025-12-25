@@ -1,33 +1,45 @@
-import { Sparkles, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { Copy, Sun, Moon } from 'lucide-react';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNoteStore } from '@/store/useNoteStore';
+import { toast } from 'sonner';
 
 export function Toolbar() {
-  const { isAIPanelOpen, toggleAIPanel } = useSettingsStore();
+  const { theme, toggleTheme } = useSettingsStore();
   const { getActiveNote } = useNoteStore();
   const activeNote = getActiveNote();
 
+  const handleCopy = () => {
+    if (activeNote?.content) {
+      navigator.clipboard.writeText(activeNote.content);
+      toast.success('Copied to clipboard');
+    }
+  };
+
   return (
-    <header className="h-14 border-b border-border bg-background flex items-center justify-between px-4 shrink-0">
-      <div className="flex items-center gap-2">
-        <h1 className="font-medium text-sm text-muted-foreground truncate max-w-[300px]">
+    <header className="relative h-12 flex items-center px-3 shrink-0 bg-background/50 backdrop-blur-sm z-10">
+      {/* Centered Title */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
+        <span className="text-sm font-medium text-foreground/80 truncate max-w-[300px]">
           {activeNote?.title || 'Untitled'}
-        </h1>
+        </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Right Actions */}
+      <div className="flex items-center gap-0.5 ml-auto">
         <button
-          onClick={toggleAIPanel}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
-            isAIPanelOpen 
-              ? 'bg-primary/10 text-primary hover:bg-primary/20' 
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-          }`}
-          title={isAIPanelOpen ? "Close AI Assistant" : "Open AI Assistant"}
+          onClick={handleCopy}
+          className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          title="Copy Markdown"
         >
-          <Sparkles size={16} />
-          <span className="hidden sm:inline">AI Assistant</span>
-          {isAIPanelOpen ? <PanelRightClose size={16} className="opacity-50" /> : <PanelRightOpen size={16} className="opacity-50" />}
+          <Copy size={16} />
+        </button>
+
+        <button
+          onClick={toggleTheme}
+          className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        >
+          {theme === 'light' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
       </div>
     </header>
