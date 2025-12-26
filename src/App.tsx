@@ -84,7 +84,7 @@ function App() {
         </div>
       </div>
       
-      <Toaster />
+      <Toaster position="top-center" />
     </div>
   );
 }

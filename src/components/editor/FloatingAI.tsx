@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useInstance } from '@milkdown/react';
 import { editorViewCtx } from '@milkdown/core';
-import { Sparkles, ArrowUp, Wand2, Loader2 } from 'lucide-react';
+import { Sparkles, ArrowUp, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const FloatingAI = () => {
