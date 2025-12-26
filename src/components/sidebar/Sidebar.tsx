@@ -3,10 +3,10 @@ import { cn } from '@/lib/utils';
 import { Plus, Trash2, FileText, Book } from 'lucide-react';
 
 export function Sidebar() {
-  const { notes, activeNoteId, createNote, setActiveNote, deleteNote } = useNoteStore();
+  const { notes, activeNoteId, createNote, setActiveNote, deleteNote, updateTitle } = useNoteStore();
 
   return (
-    <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col h-screen shrink-0 transition-all duration-300">
+    <aside className="w-64 bg-sidebar flex flex-col h-screen shrink-0 transition-all duration-300">
       {/* App Header */}
       <div className="h-12 flex items-center justify-between px-3 border-b border-sidebar-border/50">
         <div className="flex items-center gap-2 text-sidebar-foreground font-semibold select-none">
@@ -25,7 +25,7 @@ export function Sidebar() {
       </div>
       
       {/* Note List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+      <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {notes.length === 0 && (
             <div className="text-center text-muted-foreground text-sm py-8 select-none">
                 No pages inside
@@ -36,25 +36,41 @@ export function Sidebar() {
             key={note.id}
             onClick={() => setActiveNote(note.id)}
             className={cn(
-              "group flex items-center justify-between px-2.5 py-1.5 rounded-md cursor-pointer transition-colors text-sm min-h-[30px]",
+              "group flex flex-col gap-0.5 px-3 py-2.5 rounded-md cursor-pointer transition-all border border-transparent",
               activeNoteId === note.id
-                ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm border-border/10"
                 : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
             )}
           >
-            <div className="flex items-center gap-2 overflow-hidden">
-                <FileText size={15} className={cn("shrink-0", activeNoteId === note.id ? "text-foreground" : "opacity-70")} />
-                <span className="truncate leading-none pt-0.5">{note.title || 'Untitled'}</span>
+            <div className="flex items-center justify-between gap-2">
+                <input
+                    value={note.title}
+                    onChange={(e) => updateTitle(note.id, e.target.value)}
+                    onFocus={() => setActiveNote(note.id)}
+                    className="bg-transparent font-medium text-sm w-full focus:outline-none truncate placeholder:text-muted-foreground/50"
+                    placeholder="Untitled"
+                />
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNote(note.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground/70 hover:text-destructive transition-all p-0.5 rounded-sm shrink-0"
+                >
+                    <Trash2 size={13} />
+                </button>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteNote(note.id);
-              }}
-              className="opacity-0 group-hover:opacity-100 text-muted-foreground/70 hover:text-destructive transition-all p-0.5 rounded-sm hover:bg-background/50"
-            >
-              <Trash2 size={13} />
-            </button>
+            <div className="text-[11px] text-muted-foreground/60 truncate h-4 select-none">
+                {note.content
+                    .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+                    .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Keep link text
+                    .replace(/<[^>]*>/g, '') // Remove HTML tags
+                    .replace(/[#*`_~>\-]/g, '') // Remove markdown symbols
+                    .replace(/\n/g, ' ') // Replace newlines
+                    .replace(/\s+/g, ' ') // Collapse spaces
+                    .trim()
+                    .slice(0, 50) || 'No content'}
+            </div>
           </div>
         ))}
       </div>

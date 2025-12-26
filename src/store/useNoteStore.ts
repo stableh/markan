@@ -15,6 +15,7 @@ interface NoteState {
   activeNoteId: string | null;
   createNote: () => void;
   updateNote: (id: string, content: string) => void;
+  updateTitle: (id: string, title: string) => void;
   deleteNote: (id: string) => void;
   setActiveNote: (id: string) => void;
   getActiveNote: () => Note | undefined;
@@ -44,13 +45,23 @@ export const useNoteStore = create<NoteState>()(
         set((state) => ({
           notes: state.notes.map((note) => {
             if (note.id === id) {
-              // Extract title from first line of content
-              const firstLine = content.split('\n')[0].replace(/^#+\s*/, '').trim();
-              const title = firstLine || 'Untitled';
-              
               return {
                 ...note,
                 content,
+                updatedAt: Date.now(),
+              };
+            }
+            return note;
+          }),
+        }));
+      },
+
+      updateTitle: (id, title) => {
+        set((state) => ({
+          notes: state.notes.map((note) => {
+            if (note.id === id) {
+              return {
+                ...note,
                 title,
                 updatedAt: Date.now(),
               };

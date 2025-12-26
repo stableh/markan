@@ -8,10 +8,11 @@ import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { Toaster } from 'sonner';
 import { Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 function App() {
   const { notes, activeNoteId, createNote, setActiveNote, updateNote, getActiveNote } = useNoteStore();
-  const { theme, isAIPanelOpen, toggleAIPanel } = useSettingsStore(); 
+  const { theme, isAIPanelOpen, toggleAIPanel, isSidebarOpen } = useSettingsStore(); 
 
   useEffect(() => {
     // Initialize if empty
@@ -41,7 +42,17 @@ function App() {
 
   return (
     <div className="flex h-screen w-screen bg-background text-foreground overflow-hidden">
-      <Sidebar />
+      {/* Left Sidebar Wrapper */}
+      <div 
+        className={cn(
+            "h-full transition-all duration-300 ease-in-out overflow-hidden border-r border-sidebar-border",
+            isSidebarOpen ? "w-64 opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-full border-none"
+        )}
+      >
+        <div className="w-64 h-full">
+            <Sidebar />
+        </div>
+      </div>
       
       <main className="flex-1 flex flex-col h-full relative min-w-0 bg-background transition-all duration-300 ease-in-out">
         <Toolbar />
@@ -57,24 +68,22 @@ function App() {
                     Loading...
                 </div>
             )}
-            
-            {/* Floating AI Button */}
-            <button
-                onClick={toggleAIPanel}
-                className={`absolute bottom-6 right-6 z-50 p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 ${
-                    isAIPanelOpen 
-                    ? 'bg-background border border-border text-muted-foreground hover:text-foreground' 
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                }`}
-                title="Toggle AI Assistant (Cmd+J)"
-            >
-                <Sparkles size={24} className={isAIPanelOpen ? "opacity-50" : ""} />
-            </button>
         </div>
         <StatusBar />
       </main>
 
-      {isAIPanelOpen && <AIPanel />}
+      {/* Right AI Panel Wrapper */}
+      <div 
+        className={cn(
+            "h-full transition-all duration-300 ease-in-out overflow-hidden shadow-2xl z-20",
+            isAIPanelOpen ? "w-[400px] opacity-100 translate-x-0 border-l border-sidebar-border" : "w-0 opacity-0 translate-x-full border-none"
+        )}
+      >
+        <div className="w-[400px] h-full">
+            <AIPanel />
+        </div>
+      </div>
+      
       <Toaster />
     </div>
   );
