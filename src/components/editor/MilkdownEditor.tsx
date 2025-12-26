@@ -4,6 +4,7 @@ import { Crepe } from '@milkdown/crepe';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import '@milkdown/crepe/theme/common/style.css';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { FloatingAI } from './FloatingAI';
 
 interface MilkdownEditorProps {
   initialContent: string;
@@ -49,8 +50,9 @@ const Editor = ({ initialContent, onChange, readOnly = false }: MilkdownEditorPr
 export default function MilkdownEditorWrapper(props: MilkdownEditorProps) {
   return (
     <MilkdownProvider>
-      <div className="h-full w-full overflow-hidden milkdown-container">
+      <div className="h-full w-full overflow-hidden milkdown-container relative">
         <Editor {...props} />
+        <FloatingAI />
       </div>
     </MilkdownProvider>
   );
