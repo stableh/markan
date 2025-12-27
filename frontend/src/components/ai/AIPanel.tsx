@@ -63,10 +63,11 @@ export function AIPanel() {
   ];
 
   const welcomeSuggestions = [
+    { icon: FileText, label: '내가 적은 것들 정리해줘', prompt: '내가 적은 것들 정리해줘' },
     { icon: PenLine, label: '블로그 글 작성 도와줘', prompt: '블로그 글 작성을 도와줘.' },
-    { icon: FileText, label: '이 메모 정리해줘', prompt: '이 메모를 깔끔하게 정리해줘.' },
     { icon: Calendar, label: '일정 정리 도와줘', prompt: '일정 정리를 도와줘.' },
-    { icon: Sparkles, label: '새로운 아이디어 제안해줘', prompt: '새로운 아이디어를 제안해줘.' },
+    { icon: FileText, label: '이 메모 정리해줘', prompt: '이 메모를 깔끔하게 정리해줘.' },
+    { icon: Sparkles, label: 'README.md를 작성해줘', prompt: 'README.md를 작성해줘' },
   ];
 
   return (

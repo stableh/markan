@@ -15,7 +15,7 @@ export function Sidebar() {
             <img 
               src={theme === 'dark' ? "/logo/logo_dark_background.png" : "/logo/logo_white_background.png"} 
               alt="MarkAn Logo" 
-              className="w-8 h-8" 
+              className="w-8 h-8 mr-2"
             />
             <span className="text-3xl font-brand">MarkAn</span>
         </div>
