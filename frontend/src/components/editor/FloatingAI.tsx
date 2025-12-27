@@ -66,7 +66,11 @@ export const FloatingAI = () => {
 
             // Position below the selection
             // Add some offset to avoid overlapping with the selection handle
-            const top = rect.bottom + 10;
+            // If selection is near top, add more offset to avoid overlapping with Crepe's floating toolbar which might flip to bottom
+            const isNearTop = rect.top < 100;
+            const verticalOffset = isNearTop ? 60 : 10;
+
+            const top = rect.bottom + verticalOffset;
             const left = rect.left + (rect.width / 2);
             
             setPosition({ top, left });
