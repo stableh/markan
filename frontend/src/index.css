@@ -5,6 +5,7 @@
 
 @theme {
   --font-display: "Pretendard Variable", "system-ui", "sans-serif";
+  --font-brand: "Hakgyoansim_JayeonR", "sans-serif";
   --color-primary: #3b82f6;
   --color-secondary: #6366f1;
 }
@@ -198,8 +199,8 @@
 }
 
 .milkdown-container .milkdown .ProseMirror {
-    /* 왼쪽 패딩을 늘려 블록 핸들 공간 확보 (기존 4rem -> 좌우 8rem) */
-    padding: 2rem 8rem;
+    /* 왼쪽 패딩을 늘려 블록 핸들 공간 확보 (기존 4rem -> 좌우 8rem -> 좌우 12rem) */
+    padding: 2rem 12rem;
     min-height: 100%;
     outline: none;
     font-family: var(--font-display);

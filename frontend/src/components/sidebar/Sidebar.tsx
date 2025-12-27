@@ -1,19 +1,23 @@
 import { useNoteStore } from '@/store/useNoteStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { cn } from '@/lib/utils';
-import { Plus, Trash2, FileText, Book } from 'lucide-react';
+import { Plus, Trash2, FileText } from 'lucide-react';
 
 export function Sidebar() {
   const { notes, activeNoteId, createNote, setActiveNote, deleteNote, updateTitle } = useNoteStore();
+  const { theme } = useSettingsStore();
 
   return (
     <aside className="w-64 bg-sidebar flex flex-col h-screen shrink-0 transition-all duration-300">
       {/* App Header */}
-      <div className="h-12 flex items-center justify-between px-3 border-b border-sidebar-border/50">
+      <div className="h-12 flex items-center justify-between px-3 my-2">
         <div className="flex items-center gap-2 text-sidebar-foreground font-semibold select-none">
-            <div className="p-1 bg-primary/10 rounded-md">
-                <Book size={18} className="text-primary" />
-            </div>
-            <span className="text-base">Markan</span>
+            <img 
+              src={theme === 'dark' ? "/logo/logo_dark_background.png" : "/logo/logo_white_background.png"} 
+              alt="MarkAn Logo" 
+              className="w-8 h-8" 
+            />
+            <span className="text-3xl font-brand">MarkAn</span>
         </div>
         <button
           onClick={createNote}

@@ -74,10 +74,7 @@ export function AIPanel() {
       {/* Header */}
       <div className="h-14 flex items-center justify-between px-4 border-b border-sidebar-border bg-sidebar/50 backdrop-blur-sm">
         <div className="flex items-center gap-2.5 font-semibold text-base text-sidebar-foreground">
-          <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
-            <Bot size={18} />
-          </div>
-          <span>MAi</span>
+          <span className='font-brand text-2xl'>MAi</span>
         </div>
         <div className="flex items-center gap-1">
             <button className="p-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors">

@@ -35,7 +35,7 @@ export function Toolbar() {
             value={activeNote?.title || ''}
             onChange={(e) => activeNote && updateTitle(activeNote.id, e.target.value)}
             placeholder="Untitled"
-            className="bg-transparent text-sm font-medium text-center text-foreground/80 focus:outline-none focus:text-foreground placeholder:text-muted-foreground/50 w-full truncate"
+            className="bg-transparent text-xl font-medium text-center text-foreground/80 focus:outline-none focus:text-foreground placeholder:text-muted-foreground/50 w-full truncate"
         />
       </div>
 
@@ -68,14 +68,14 @@ export function Toolbar() {
 
         <button
           onClick={toggleAIPanel}
-          className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
+          className={`h-8 px-2 flex items-center justify-center rounded-md transition-colors ${
             isAIPanelOpen 
               ? 'text-primary bg-primary/10' 
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
           title={isAIPanelOpen ? "Close AI Assistant" : "Open AI Assistant"}
         >
-          <Sparkles size={16} />
+          <span className="font-brand text-lg">MAi</span>
         </button>
       </div>
     </header>
