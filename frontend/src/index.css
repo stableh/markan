@@ -210,6 +210,43 @@
     caret-color: var(--foreground);
 }
 
+/* Header Font Sizes Override */
+.milkdown-container .milkdown .ProseMirror h1 {
+    font-size: 36px;
+    line-height: 44px;
+    margin-top: 28px;
+}
+
+.milkdown-container .milkdown .ProseMirror h2 {
+    font-size: 30px;
+    line-height: 38px;
+    margin-top: 24px;
+}
+
+.milkdown-container .milkdown .ProseMirror h3 {
+    font-size: 26px;
+    line-height: 34px;
+    margin-top: 20px;
+}
+
+.milkdown-container .milkdown .ProseMirror h4 {
+    font-size: 22px;
+    line-height: 30px;
+    margin-top: 18px;
+}
+
+.milkdown-container .milkdown .ProseMirror h5 {
+    font-size: 18px;
+    line-height: 26px;
+    margin-top: 16px;
+}
+
+.milkdown-container .milkdown .ProseMirror h6 {
+    font-size: 16px;
+    line-height: 24px;
+    margin-top: 16px;
+}
+
 /* 드래그 선택 영역 스타일 명시적 지정 */
 .milkdown-container .milkdown .ProseMirror ::selection {
     background-color: var(--selection-background);
