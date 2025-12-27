@@ -16,7 +16,7 @@ export function Toolbar() {
   };
 
   return (
-    <header className="relative h-12 flex items-center px-3 shrink-0 bg-background/50 backdrop-blur-sm z-10">
+    <header className="relative h-14 flex items-center px-3 shrink-0 bg-background/50 backdrop-blur-sm z-10">
       {/* Left Actions */}
       <div className="flex items-center gap-1 z-20">
         <button
