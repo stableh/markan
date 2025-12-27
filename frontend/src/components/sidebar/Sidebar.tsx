@@ -17,7 +17,7 @@ export function Sidebar() {
               alt="MarkAn Logo" 
               className="w-8 h-8 mr-2"
             />
-            <span className="text-3xl font-brand">MarkAn</span>
+            <span className="text-2xl font-brand">MarkAn</span>
         </div>
         <button
           onClick={createNote}
