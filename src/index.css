@@ -3,6 +3,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.titlebar-drag-region {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
 @theme {
   --font-display: "Pretendard Variable", "system-ui", "sans-serif";
   --font-brand: "Hakgyoansim_JayeonR", "sans-serif";

@@ -10,6 +10,8 @@ import { Toaster } from 'sonner';
 import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { TitleBar } from '@/components/titlebar/TitleBar';
+
 function App() {
   const { notes, activeNoteId, createNote, setActiveNote, updateNote, getActiveNote } = useNoteStore();
   const { theme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize } = useSettingsStore(); 
@@ -45,22 +47,22 @@ function App() {
   const activeNote = getActiveNote();
 
   return (
-    <div 
-      className="flex h-screen w-screen bg-background text-foreground overflow-hidden"
-    >
-      {/* Left Sidebar Wrapper */}
-      <div 
-        className={cn(
-            "h-full transition-all duration-300 ease-in-out overflow-hidden border-r border-sidebar-border",
-            isSidebarOpen ? "w-64 opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-full border-none"
-        )}
-      >
-        <div className="w-64 h-full">
-            <Sidebar />
+    <div className="flex flex-col h-screen w-screen bg-background text-foreground overflow-hidden">
+      <TitleBar />
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar Wrapper */}
+        <div 
+          className={cn(
+              "h-full transition-all duration-300 ease-in-out overflow-hidden border-r border-sidebar-border",
+              isSidebarOpen ? "w-64 opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-full border-none"
+          )}
+        >
+          <div className="w-64 h-full">
+              <Sidebar />
+          </div>
         </div>
-      </div>
-      
-      <main className="flex-1 flex flex-col h-full relative min-w-0 bg-background transition-all duration-300 ease-in-out">
+        
+        <main className="flex-1 flex flex-col h-full relative min-w-0 bg-background transition-all duration-300 ease-in-out">
         <Toolbar />
         <div className="flex-1 relative overflow-hidden">
             {activeNote ? (
@@ -88,6 +90,7 @@ function App() {
         <div className="w-[400px] h-full">
             <AIPanel />
         </div>
+      </div>
       </div>
       
       <Toaster position="top-center" />
