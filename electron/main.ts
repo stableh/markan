@@ -1,6 +1,31 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+
+function getIconPath(): string {
+  const iconName = nativeTheme.shouldUseDarkColors
+    ? 'logo/dock/logo_black_background.png'
+    : 'logo/dock/logo_white_background.png'
+  
+  if (is.dev) {
+    return join(__dirname, '../../public', iconName)
+  }
+  return join(__dirname, '../renderer', iconName)
+}
+
+function updateAppIcon(window: BrowserWindow | null) {
+  const iconPath = getIconPath()
+  
+  // Update Dock icon on macOS
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(iconPath)
+  }
+  
+  // Update Window icon (Windows/Linux)
+  if (window) {
+    window.setIcon(iconPath)
+  }
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -9,10 +34,19 @@ function createWindow(): void {
     height: 670,
     show: false,
     autoHideMenuBar: true,
+    icon: getIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/preload.mjs'),
       sandbox: false
     }
+  })
+
+  // Initial icon set
+  updateAppIcon(mainWindow)
+
+  // Listen for theme changes
+  nativeTheme.on('updated', () => {
+    updateAppIcon(mainWindow)
   })
 
   mainWindow.on('ready-to-show', () => {
