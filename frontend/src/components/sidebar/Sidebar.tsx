@@ -29,25 +29,30 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-sidebar flex flex-col h-screen shrink-0 transition-all duration-300">
       {/* App Header */}
-      <div className="h-14 flex items-center justify-between px-4 my-2">
-        <div className="flex items-center gap-3 select-none">
+      <div className="h-14 flex items-center justify-between px-3 my-2 relative">
+        {/* Left: Logo */}
+        <div className="flex items-center select-none z-10">
             <img 
               src={theme === 'dark' ? "/logo/logo_dark_background.png" : "/logo/logo_white_background.png"} 
               alt="MarkAn Logo" 
               className="w-10 h-10 object-contain"
             />
-            <div className="flex flex-col justify-center">
-                <div className="text-[10px] font-medium text-muted-foreground/80 uppercase tracking-wider leading-none mb-1">
-                  {month} {day}, {year}
-                </div>
-                <div className="text-xl font-bold text-foreground tracking-tight font-mono leading-none">
-                  {time}
-                </div>
+        </div>
+
+        {/* Center: Date & Time */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center select-none w-full pointer-events-none">
+            <div className="text-xs font-medium text-muted-foreground/80 uppercase tracking-wider leading-none mb-1">
+              {month} {day}, {year}
+            </div>
+            <div className="text-lg font-bold text-foreground tracking-tight font-mono leading-none">
+              {time}
             </div>
         </div>
+
+        {/* Right: Add Button */}
         <button
           onClick={createNote}
-          className="p-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors"
+          className="p-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors z-10"
           title="Create New Page"
         >
           <Plus size={20} />
