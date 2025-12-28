@@ -11,8 +11,6 @@ import { Sparkles, FilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
-import { TitleBar } from '@/components/titlebar/TitleBar';
-
 function App() {
   const { notes, activeNoteId, createNote, setActiveNote, updateNote, getActiveNote } = useNoteStore();
   const { theme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize } = useSettingsStore(); 
@@ -49,7 +47,6 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-background text-foreground overflow-hidden">
-      <TitleBar />
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar Wrapper */}
         <div 

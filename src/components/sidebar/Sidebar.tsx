@@ -27,9 +27,12 @@ export function Sidebar() {
   const { year, month, day, time } = formatDate(currentTime);
 
   return (
-    <aside className="w-64 bg-sidebar flex flex-col h-screen shrink-0 transition-all duration-300">
+    <aside className="w-64 bg-sidebar flex flex-col h-screen shrink-0 transition-all duration-300 border-r border-sidebar-border">
+      {/* Traffic Light Spacer & Drag Region */}
+      <div className="h-14 w-full titlebar-drag-region shrink-0" />
+
       {/* App Header */}
-      <div className="h-14 flex items-center justify-between px-3 my-2 relative">
+      <div className="h-14 flex items-center justify-between px-3 mb-2 relative shrink-0">
         {/* Left: Logo */}
         <div className="flex items-center select-none z-10">
             <img 

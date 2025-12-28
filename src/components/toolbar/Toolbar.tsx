@@ -17,9 +17,9 @@ export function Toolbar() {
   };
 
   return (
-    <header className="relative h-14 flex items-center px-3 shrink-0 bg-background/50 backdrop-blur-sm z-10">
+    <header className="relative h-14 flex items-center px-3 shrink-0 bg-background/50 backdrop-blur-sm z-10 titlebar-drag-region">
       {/* Left Actions */}
-      <div className="flex items-center gap-1 z-20">
+      <div className="flex items-center gap-1 z-20 titlebar-no-drag">
         <button
             onClick={toggleSidebar}
             className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -30,7 +30,7 @@ export function Toolbar() {
       </div>
 
       {/* Centered Title */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-full max-w-[400px]">
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-full max-w-[400px] titlebar-no-drag">
         <input
             type="text"
             value={activeNote?.title || ''}
@@ -41,7 +41,7 @@ export function Toolbar() {
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-0.5 ml-auto">
+      <div className="flex items-center gap-0.5 ml-auto titlebar-no-drag">
         <button
           onClick={handleCopy}
           className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
