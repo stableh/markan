@@ -181,6 +181,7 @@
     --crepe-color-on-surface: var(--card-foreground);
     --crepe-color-primary: var(--primary);
     --crepe-color-on-primary: var(--primary-foreground);
+    --crepe-color-on-surface-variant: var(--muted-foreground);
     
     /* 아이콘 색상 제어 변수 (다크모드 대응) */
     --crepe-color-outline: var(--muted-foreground); 
