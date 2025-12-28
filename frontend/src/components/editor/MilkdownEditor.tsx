@@ -48,11 +48,22 @@ const Editor = ({ initialContent, onChange, readOnly = false }: MilkdownEditorPr
 };
 
 export default function MilkdownEditorWrapper(props: MilkdownEditorProps) {
+  const { fontSize, pageWidth } = useSettingsStore();
+
   return (
     <MilkdownProvider>
-      <div className="h-full w-full overflow-hidden milkdown-container relative">
-        <Editor {...props} />
-        <FloatingAI />
+      <div 
+        className="h-full w-full overflow-hidden milkdown-container relative"
+        style={{ 
+          '--editor-font-size': `${fontSize}px`,
+        } as React.CSSProperties}
+      >
+        <div className={`h-full overflow-y-auto ${pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background shadow-sm' : 'w-full'}`}>
+          <div style={{ fontSize: `${fontSize}px` }}>
+            <Editor {...props} />
+          </div>
+          <FloatingAI />
+        </div>
       </div>
     </MilkdownProvider>
   );

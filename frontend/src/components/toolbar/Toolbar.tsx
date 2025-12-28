@@ -2,6 +2,7 @@ import { Copy, Sun, Moon, Sparkles, PanelLeft, Settings } from 'lucide-react';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNoteStore } from '@/store/useNoteStore';
 import { toast } from 'sonner';
+import { SettingsModal } from '@/components/settings/SettingsModal';
 
 export function Toolbar() {
   const { theme, toggleTheme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, toggleSidebar } = useSettingsStore();
@@ -49,20 +50,14 @@ export function Toolbar() {
           <Copy size={16} />
         </button>
 
-        <button
-          onClick={toggleTheme}
-          className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
-
-        <button
-          className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          title="Settings"
-        >
-          <Settings size={16} />
-        </button>
+        <SettingsModal>
+          <button
+            className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            title="Settings"
+          >
+            <Settings size={16} />
+          </button>
+        </SettingsModal>
 
         <div className="w-px h-4 bg-border mx-1" />
 
