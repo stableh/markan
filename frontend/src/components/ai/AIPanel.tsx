@@ -63,15 +63,15 @@ export function AIPanel() {
   ];
 
   const welcomeSuggestions = [
-    { icon: FileText, label: '내가 적은 것들 정리해줘', prompt: '내가 적은 것들 정리해줘' },
-    { icon: PenLine, label: '블로그 글 작성 도와줘', prompt: '블로그 글 작성을 도와줘.' },
-    { icon: Calendar, label: '일정 정리 도와줘', prompt: '일정 정리를 도와줘.' },
-    { icon: FileText, label: '이 메모 정리해줘', prompt: '이 메모를 깔끔하게 정리해줘.' },
-    { icon: Sparkles, label: 'README.md를 작성해줘', prompt: 'README.md를 작성해줘' },
+    { icon: FileText, label: 'Organize my notes', prompt: 'Organize my notes' },
+    { icon: PenLine, label: 'Help me write a blog post', prompt: 'Help me write a blog post' },
+    { icon: Calendar, label: 'Organize my schedule', prompt: 'Organize my schedule' },
+    { icon: FileText, label: 'Clean up this note', prompt: 'Clean up this note' },
+    { icon: Sparkles, label: 'Write a README.md', prompt: 'Write a README.md' },
   ];
 
   return (
-    <aside className="w-[400px] bg-sidebar flex flex-col h-screen shrink-0 z-20">
+    <aside className="w-[400px] bg-sidebar flex flex-col h-screen shrink-0 z-20 relative">
       {/* Header */}
       <div className="h-14 flex items-center justify-between px-4 border-b border-sidebar-border bg-sidebar/50 backdrop-blur-sm">
         <div className="flex items-center gap-2.5 font-semibold text-base text-sidebar-foreground">
@@ -94,13 +94,10 @@ export function AIPanel() {
       <div className="flex-1 overflow-y-auto p-5 space-y-8">
         {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-4 space-y-6 text-center">
-                <div className="w-16 h-16 bg-primary/5 rounded-2xl flex items-center justify-center text-primary mb-2">
-                    <Bot size={32} />
-                </div>
                 <div className="space-y-2 max-w-[280px]">
-                    <h3 className="font-semibold text-lg text-foreground">무엇을 도와드릴까요?</h3>
+                    <h3 className="font-semibold text-lg text-foreground">What shall we create today?</h3>
                     <p className="text-sm text-muted-foreground">
-                        글쓰기, 요약, 아이디어 생성 등 다양한 작업을 도와드립니다.
+                        Let's turn your thoughts into words. I can help with writing, summarizing, and more.
                     </p>
                 </div>
                 
@@ -246,6 +243,22 @@ export function AIPanel() {
         
         <div className="text-[10px] text-center text-muted-foreground/60">
             AI can make mistakes. Please review generated text.
+        </div>
+      </div>
+
+      {/* Coming Soon Overlay */}
+      <div className="absolute inset-x-0 bottom-0 top-14 bg-background/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center text-center p-6">
+        <div className="bg-background/80 border border-border shadow-lg rounded-xl p-6 max-w-xs space-y-4 backdrop-blur-md">
+            <div className="space-y-2">
+                <span className='font-brand text-2xl'>MAi</span>
+                <h3 className="font-semibold text-lg">Sharpening Pencils...</h3>
+                <p className="text-sm text-muted-foreground">Our digital scribes are preparing their quills.</p>
+            </div>
+            <div className="pt-2">
+                <span className="inline-flex items-center rounded-full border border-transparent px-2.5 py-0.5 text-sm font-semibold text-secondary-foreground font-brand">
+                    MarkAn
+                </span>
+            </div>
         </div>
       </div>
     </aside>
