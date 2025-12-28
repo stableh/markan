@@ -19,7 +19,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      theme: 'light',
+      theme: 'dark',
       fontSize: 16,
       uiFontSize: 14,
       pageWidth: 'narrow',
