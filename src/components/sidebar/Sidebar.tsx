@@ -1,7 +1,7 @@
 import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { cn } from '@/lib/utils';
-import { Plus, Trash2, FileText } from 'lucide-react';
+import { Plus, Trash2, FileText, FolderOpen, FileUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function Sidebar() {
@@ -35,39 +35,53 @@ export function Sidebar() {
       <div className="h-14 flex items-center justify-between px-3 mb-2 relative shrink-0">
         {/* Left: Logo */}
         <div className="flex items-center select-none z-10 pl-0.5">
-            <img 
-              src={theme === 'dark' ? "/logo/logo_dark_background.png" : "/logo/logo_white_background.png"} 
-              alt="MarkAn Logo" 
-              className="w-10 h-10 object-contain"
-            />
+          <img
+            src={theme === 'dark' ? "/logo/logo_dark_background.png" : "/logo/logo_white_background.png"}
+            alt="MarkAn Logo"
+            className="w-10 h-10 object-contain"
+          />
         </div>
 
         {/* Center: Date & Time */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center select-none w-full pointer-events-none">
-            <div className="text-xs font-medium text-muted-foreground/80 uppercase tracking-wider leading-none mb-1">
-              {month} {day}, {year}
-            </div>
-            <div className="text-lg font-bold text-foreground tracking-tight font-mono leading-none">
-              {time}
-            </div>
+          <div className="text-xs font-medium text-muted-foreground/80 uppercase tracking-wider leading-none mb-1">
+            {month} {day}, {year}
+          </div>
+          <div className="text-lg font-bold text-foreground tracking-tight font-mono leading-none">
+            {time}
+          </div>
         </div>
+      </div>
 
-        {/* Right: Add Button */}
+      {/* Folder/File Open Buttons */}
+      <div className="flex items-center justify-center gap-2 mb-3 px-4">
+        <button
+          className="flex-1 flex items-center justify-center h-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
+          title="Open Folder"
+        >
+          <FolderOpen size={18} />
+        </button>
+        <button
+          className="flex-1 flex items-center justify-center h-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
+          title="Open File"
+        >
+          <FileUp size={18} />
+        </button>
         <button
           onClick={createNote}
-          className="p-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors z-10"
+          className="flex-1 flex items-center justify-center h-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
           title="Create New Page"
         >
           <Plus size={20} />
         </button>
       </div>
-      
+
       {/* Note List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {notes.length === 0 && (
-            <div className="text-center text-muted-foreground text-sm py-8 select-none">
-                No pages inside
-            </div>
+          <div className="text-center text-muted-foreground text-sm py-8 select-none">
+            No pages inside
+          </div>
         )}
         {notes.map((note) => (
           <div
@@ -81,33 +95,33 @@ export function Sidebar() {
             )}
           >
             <div className="flex flex-col gap-0.5 overflow-hidden w-full">
-                <input
-                    value={note.title}
-                    onChange={(e) => updateTitle(note.id, e.target.value)}
-                    onFocus={() => setActiveNote(note.id)}
-                    className="bg-transparent font-medium text-sm w-full focus:outline-none truncate placeholder:text-muted-foreground/50"
-                    placeholder="Untitled"
-                />
-                <div className="text-[11px] text-muted-foreground/60 truncate h-4 select-none">
-                    {note.content
-                        .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
-                        .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Keep link text
-                        .replace(/<[^>]*>/g, '') // Remove HTML tags
-                        .replace(/[#*`_~>\-]/g, '') // Remove markdown symbols
-                        .replace(/\n/g, ' ') // Replace newlines
-                        .replace(/\s+/g, ' ') // Collapse spaces
-                        .trim()
-                        .slice(0, 50) || 'No content'}
-                </div>
+              <input
+                value={note.title}
+                onChange={(e) => updateTitle(note.id, e.target.value)}
+                onFocus={() => setActiveNote(note.id)}
+                className="bg-transparent font-medium text-sm w-full focus:outline-none truncate placeholder:text-muted-foreground/50"
+                placeholder="Untitled"
+              />
+              <div className="text-[11px] text-muted-foreground/60 truncate h-4 select-none">
+                {note.content
+                  .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+                  .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Keep link text
+                  .replace(/<[^>]*>/g, '') // Remove HTML tags
+                  .replace(/[#*`_~>\-]/g, '') // Remove markdown symbols
+                  .replace(/\n/g, ' ') // Replace newlines
+                  .replace(/\s+/g, ' ') // Collapse spaces
+                  .trim()
+                  .slice(0, 50) || 'No content'}
+              </div>
             </div>
             <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    deleteNote(note.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 text-muted-foreground/70 hover:text-destructive transition-all p-0.5 rounded-sm shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteNote(note.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground/70 hover:text-destructive transition-all p-0.5 rounded-sm shrink-0"
             >
-                <Trash2 size={17} />
+              <Trash2 size={17} />
             </button>
           </div>
         ))}
