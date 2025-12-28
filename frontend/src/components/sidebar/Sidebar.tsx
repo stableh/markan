@@ -2,29 +2,55 @@ import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { cn } from '@/lib/utils';
 import { Plus, Trash2, FileText } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export function Sidebar() {
   const { notes, activeNoteId, createNote, setActiveNote, deleteNote, updateTitle } = useNoteStore();
   const { theme } = useSettingsStore();
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    const day = date.getDate();
+    const time = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return { year, month, day, time };
+  };
+
+  const { year, month, day, time } = formatDate(currentTime);
 
   return (
     <aside className="w-64 bg-sidebar flex flex-col h-screen shrink-0 transition-all duration-300">
       {/* App Header */}
-      <div className="h-12 flex items-center justify-between px-3 my-2">
-        <div className="flex items-center gap-2 text-sidebar-foreground font-semibold select-none">
+      <div className="h-14 flex items-center justify-between px-4 my-2">
+        <div className="flex items-center gap-3 select-none">
             <img 
               src={theme === 'dark' ? "/logo/logo_dark_background.png" : "/logo/logo_white_background.png"} 
               alt="MarkAn Logo" 
-              className="w-8 h-8 mr-2"
+              className="w-10 h-10 object-contain"
             />
-            <span className="text-2xl font-brand">MarkAn</span>
+            <div className="flex flex-col justify-center">
+                <div className="text-[10px] font-medium text-muted-foreground/80 uppercase tracking-wider leading-none mb-1">
+                  {month} {day}, {year}
+                </div>
+                <div className="text-xl font-bold text-foreground tracking-tight font-mono leading-none">
+                  {time}
+                </div>
+            </div>
         </div>
         <button
           onClick={createNote}
-          className="p-1 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors"
+          className="p-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors"
           title="Create New Page"
         >
-          <Plus size={18} />
+          <Plus size={20} />
         </button>
       </div>
       
