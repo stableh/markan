@@ -19,7 +19,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       theme: 'light',
       fontSize: 16,
-      pageWidth: 'wide',
+      pageWidth: 'narrow',
       isSidebarOpen: true,
       isAIPanelOpen: false,
       toggleTheme: () =>
