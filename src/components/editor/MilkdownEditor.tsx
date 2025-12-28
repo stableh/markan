@@ -58,7 +58,7 @@ export default function MilkdownEditorWrapper(props: MilkdownEditorProps) {
           '--editor-font-size': `${fontSize}px`,
         } as React.CSSProperties}
       >
-        <div className={`h-full overflow-y-auto ${pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background shadow-sm' : 'w-full'}`}>
+        <div className={`h-full overflow-y-auto ${pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background' : 'w-full'}`}>
           <div style={{ fontSize: `${fontSize}px` }}>
             <Editor {...props} />
           </div>
