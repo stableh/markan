@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 function App() {
   const { notes, activeNoteId, createNote, setActiveNote, updateNote, getActiveNote } = useNoteStore();
-  const { theme, isAIPanelOpen, toggleAIPanel, isSidebarOpen } = useSettingsStore(); 
+  const { theme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize } = useSettingsStore(); 
 
   useEffect(() => {
     // Initialize if empty
@@ -41,7 +41,10 @@ function App() {
   const activeNote = getActiveNote();
 
   return (
-    <div className="flex h-screen w-screen bg-background text-foreground overflow-hidden">
+    <div 
+      className="flex h-screen w-screen bg-background text-foreground overflow-hidden"
+      style={{ fontSize: `${uiFontSize}px` }}
+    >
       {/* Left Sidebar Wrapper */}
       <div 
         className={cn(

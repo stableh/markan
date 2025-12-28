@@ -14,7 +14,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ children }: SettingsModalProps) {
-  const { theme, toggleTheme, fontSize, setFontSize, pageWidth, setPageWidth } = useSettingsStore();
+  const { theme, toggleTheme, fontSize, setFontSize, uiFontSize, setUiFontSize, pageWidth, setPageWidth } = useSettingsStore();
 
   return (
     <Dialog>
@@ -46,10 +46,10 @@ export function SettingsModal({ children }: SettingsModalProps) {
             </Button>
           </div>
 
-          {/* Font Size Setting */}
+          {/* Editor Font Size Setting */}
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">Font Size</span>
+              <span className="text-sm font-medium">Editor Font Size</span>
               <span className="text-xs text-muted-foreground">
                 Adjust the editor font size
               </span>
@@ -70,6 +70,37 @@ export function SettingsModal({ children }: SettingsModalProps) {
                 size="sm"
                 onClick={() => setFontSize(Math.min(32, fontSize + 1))}
                 disabled={fontSize >= 32}
+                className="h-8 w-8 p-0"
+              >
+                +
+              </Button>
+            </div>
+          </div>
+
+          {/* UI Font Size Setting */}
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">UI Font Size</span>
+              <span className="text-xs text-muted-foreground">
+                Adjust the interface font size
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUiFontSize(Math.max(12, uiFontSize - 1))}
+                disabled={uiFontSize <= 12}
+                className="h-8 w-8 p-0"
+              >
+                -
+              </Button>
+              <span className="w-12 text-center text-sm">{uiFontSize}px</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUiFontSize(Math.min(20, uiFontSize + 1))}
+                disabled={uiFontSize >= 20}
                 className="h-8 w-8 p-0"
               >
                 +

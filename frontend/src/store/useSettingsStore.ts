@@ -4,11 +4,13 @@ import { persist } from 'zustand/middleware';
 interface SettingsState {
   theme: 'light' | 'dark';
   fontSize: number;
+  uiFontSize: number;
   pageWidth: 'narrow' | 'wide';
   isSidebarOpen: boolean;
   isAIPanelOpen: boolean;
   toggleTheme: () => void;
   setFontSize: (size: number) => void;
+  setUiFontSize: (size: number) => void;
   setPageWidth: (width: 'narrow' | 'wide') => void;
   toggleSidebar: () => void;
   toggleAIPanel: () => void;
@@ -19,6 +21,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       theme: 'light',
       fontSize: 16,
+      uiFontSize: 14,
       pageWidth: 'narrow',
       isSidebarOpen: true,
       isAIPanelOpen: false,
@@ -33,6 +36,7 @@ export const useSettingsStore = create<SettingsState>()(
           return { theme: newTheme };
         }),
       setFontSize: (size) => set({ fontSize: size }),
+      setUiFontSize: (size) => set({ uiFontSize: size }),
       setPageWidth: (width) => set({ pageWidth: width }),
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
       toggleAIPanel: () => set((state) => ({ isAIPanelOpen: !state.isAIPanelOpen })),
