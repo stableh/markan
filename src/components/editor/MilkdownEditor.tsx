@@ -3,6 +3,7 @@ import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/react';
 import { Crepe } from '@milkdown/crepe';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import '@milkdown/crepe/theme/common/style.css';
+import '@/milkdown-slash-menu.css';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { FloatingAI } from './FloatingAI';
 
