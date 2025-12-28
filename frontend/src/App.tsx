@@ -38,12 +38,15 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [createNote, setActiveNote, toggleAIPanel]);
 
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${uiFontSize}px`;
+  }, [uiFontSize]);
+
   const activeNote = getActiveNote();
 
   return (
     <div 
       className="flex h-screen w-screen bg-background text-foreground overflow-hidden"
-      style={{ fontSize: `${uiFontSize}px` }}
     >
       {/* Left Sidebar Wrapper */}
       <div 
