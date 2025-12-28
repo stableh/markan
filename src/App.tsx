@@ -7,8 +7,9 @@ import { AIPanel } from '@/components/ai/AIPanel';
 import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { Toaster } from 'sonner';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, FilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 import { TitleBar } from '@/components/titlebar/TitleBar';
 
@@ -72,8 +73,15 @@ function App() {
                     onChange={(content) => updateNote(activeNote.id, content)}
                 />
             ) : (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground h-full">
-                    Loading...
+                <div className="flex-1 flex items-center justify-center h-full">
+                    <Button 
+                        variant="ghost" 
+                        onClick={() => createNote()}
+                        className="text-muted-foreground hover:text-foreground text-lg h-auto py-2 px-6"
+                    >
+                        <FilePlus className="size-6" />
+                        Yes, it’s empty. Fix that.
+                    </Button>
                 </div>
             )}
         </div>
