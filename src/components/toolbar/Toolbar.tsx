@@ -32,13 +32,15 @@ export function Toolbar() {
 
       {/* Centered Title */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-full max-w-[400px] titlebar-no-drag">
-        <input
-            type="text"
-            value={activeNote?.title || ''}
-            onChange={(e) => activeNote && updateTitle(activeNote.id, e.target.value)}
-            placeholder="Untitled"
-            className="bg-transparent text-xl font-medium text-center text-foreground/80 focus:outline-none focus:text-foreground placeholder:text-muted-foreground/50 w-full truncate"
-        />
+        {activeNote && (
+          <input
+              type="text"
+              value={activeNote.title}
+              onChange={(e) => updateTitle(activeNote.id, e.target.value)}
+              placeholder="Untitled"
+              className="bg-transparent text-xl font-medium text-center text-foreground/80 focus:outline-none focus:text-foreground placeholder:text-muted-foreground/50 w-full truncate"
+          />
+        )}
       </div>
 
       {/* Right Actions */}

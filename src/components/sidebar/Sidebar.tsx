@@ -34,7 +34,7 @@ export function Sidebar() {
       {/* App Header */}
       <div className="h-14 flex items-center justify-between px-3 mb-2 relative shrink-0">
         {/* Left: Logo */}
-        <div className="flex items-center select-none z-10">
+        <div className="flex items-center select-none z-10 pl-0.5">
             <img 
               src={theme === 'dark' ? "/logo/logo_dark_background.png" : "/logo/logo_white_background.png"} 
               alt="MarkAn Logo" 
@@ -74,13 +74,13 @@ export function Sidebar() {
             key={note.id}
             onClick={() => setActiveNote(note.id)}
             className={cn(
-              "group flex flex-col gap-0.5 px-3 py-2.5 rounded-md cursor-pointer transition-all border border-transparent",
+              "group flex items-center justify-between gap-2 px-3 py-2.5 rounded-md cursor-pointer transition-all border border-transparent",
               activeNoteId === note.id
                 ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm border-border/10"
                 : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50"
             )}
           >
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-0.5 overflow-hidden w-full">
                 <input
                     value={note.title}
                     onChange={(e) => updateTitle(note.id, e.target.value)}
@@ -88,27 +88,27 @@ export function Sidebar() {
                     className="bg-transparent font-medium text-sm w-full focus:outline-none truncate placeholder:text-muted-foreground/50"
                     placeholder="Untitled"
                 />
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        deleteNote(note.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground/70 hover:text-destructive transition-all p-0.5 rounded-sm shrink-0"
-                >
-                    <Trash2 size={13} />
-                </button>
+                <div className="text-[11px] text-muted-foreground/60 truncate h-4 select-none">
+                    {note.content
+                        .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+                        .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Keep link text
+                        .replace(/<[^>]*>/g, '') // Remove HTML tags
+                        .replace(/[#*`_~>\-]/g, '') // Remove markdown symbols
+                        .replace(/\n/g, ' ') // Replace newlines
+                        .replace(/\s+/g, ' ') // Collapse spaces
+                        .trim()
+                        .slice(0, 50) || 'No content'}
+                </div>
             </div>
-            <div className="text-[11px] text-muted-foreground/60 truncate h-4 select-none">
-                {note.content
-                    .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
-                    .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Keep link text
-                    .replace(/<[^>]*>/g, '') // Remove HTML tags
-                    .replace(/[#*`_~>\-]/g, '') // Remove markdown symbols
-                    .replace(/\n/g, ' ') // Replace newlines
-                    .replace(/\s+/g, ' ') // Collapse spaces
-                    .trim()
-                    .slice(0, 50) || 'No content'}
-            </div>
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    deleteNote(note.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 text-muted-foreground/70 hover:text-destructive transition-all p-0.5 rounded-sm shrink-0"
+            >
+                <Trash2 size={17} />
+            </button>
           </div>
         ))}
       </div>
