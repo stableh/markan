@@ -8,13 +8,14 @@ import {
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 interface SettingsModalProps {
   children: React.ReactNode;
 }
 
 export function SettingsModal({ children }: SettingsModalProps) {
-  const { theme, toggleTheme, fontSize, setFontSize, uiFontSize, setUiFontSize, pageWidth, setPageWidth } = useSettingsStore();
+  const { theme, toggleTheme, fontSize, setFontSize, uiFontSize, setUiFontSize, pageWidth, setPageWidth, showAIButton, toggleShowAIButton } = useSettingsStore();
 
   return (
     <Dialog>
@@ -134,6 +135,20 @@ export function SettingsModal({ children }: SettingsModalProps) {
                 Wide
               </Button>
             </div>
+          </div>
+
+          {/* Show AI Button Setting */}
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">Show <span className="font-brand text-base">MAi</span> Button</span>
+              <span className="text-xs text-muted-foreground">
+                Toggle visibility of the <span className="font-brand text-base">MAi</span> button in toolbar
+              </span>
+            </div>
+            <Switch
+              checked={showAIButton}
+              onCheckedChange={toggleShowAIButton}
+            />
           </div>
         </div>
       </DialogContent>
