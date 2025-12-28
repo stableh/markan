@@ -31,7 +31,7 @@ export function Toolbar() {
       </div>
 
       {/* Centered Title */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-full max-w-[400px] titlebar-no-drag">
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-full max-w-[300px] titlebar-no-drag">
         {activeNote && (
           <input
               type="text"
