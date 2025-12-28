@@ -6,7 +6,7 @@ import { SettingsModal } from '@/components/settings/SettingsModal';
 import { cn } from '@/lib/utils';
 
 export function Toolbar() {
-  const { theme, toggleTheme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, toggleSidebar } = useSettingsStore();
+  const { theme, toggleTheme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, toggleSidebar, showAIButton } = useSettingsStore();
   const { getActiveNote, updateTitle } = useNoteStore();
   const activeNote = getActiveNote();
 
@@ -62,19 +62,23 @@ export function Toolbar() {
           </button>
         </SettingsModal>
 
-        <div className="w-px h-4 bg-border mx-1" />
+        {showAIButton && (
+          <>
+            <div className="w-px h-4 bg-border mx-1" />
 
-        <button
-          onClick={toggleAIPanel}
-          className={`h-8 px-2 flex items-center justify-center rounded-md transition-colors ${
-            isAIPanelOpen 
-              ? 'text-primary bg-primary/10' 
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-          }`}
-          title={isAIPanelOpen ? "Close AI Assistant" : "Open AI Assistant"}
-        >
-          <span className="font-brand text-lg">MAi</span>
-        </button>
+            <button
+              onClick={toggleAIPanel}
+              className={`h-8 px-2 flex items-center justify-center rounded-md transition-colors ${
+                isAIPanelOpen 
+                  ? 'text-primary bg-primary/10' 
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+              title={isAIPanelOpen ? "Close AI Assistant" : "Open AI Assistant"}
+            >
+              <span className="font-brand text-lg">MAi</span>
+            </button>
+          </>
+        )}
       </div>
     </header>
   );
