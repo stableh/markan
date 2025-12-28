@@ -37,7 +37,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     titleBarStyle: 'hidden',
-    trafficLightPosition: { x: 18, y: 18 },
+    trafficLightPosition: { x: 18, y: 17 },
     icon: getIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/preload.mjs'),

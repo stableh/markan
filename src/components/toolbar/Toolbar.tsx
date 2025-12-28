@@ -3,6 +3,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNoteStore } from '@/store/useNoteStore';
 import { toast } from 'sonner';
 import { SettingsModal } from '@/components/settings/SettingsModal';
+import { cn } from '@/lib/utils';
 
 export function Toolbar() {
   const { theme, toggleTheme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, toggleSidebar } = useSettingsStore();
@@ -19,7 +20,7 @@ export function Toolbar() {
   return (
     <header className="relative h-14 flex items-center px-3 shrink-0 bg-background/50 backdrop-blur-sm z-10 titlebar-drag-region">
       {/* Left Actions */}
-      <div className="flex items-center gap-1 z-20 titlebar-no-drag">
+      <div className={cn("flex items-center gap-1 z-20 titlebar-no-drag transition-all duration-300", !isSidebarOpen && "pl-22")}>
         <button
             onClick={toggleSidebar}
             className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
