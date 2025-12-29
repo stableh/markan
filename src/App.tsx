@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Sidebar } from '@/components/sidebar/Sidebar';
 import { Toolbar } from '@/components/toolbar/Toolbar';
 import { StatusBar } from '@/components/statusbar/StatusBar';
-import MilkdownEditorWrapper from '@/components/editor/MilkdownEditor';
+import MilkdownEditorWrapper, { type MilkdownEditorRef } from '@/components/editor/MilkdownEditor';
 import { AIPanel } from '@/components/ai/AIPanel';
 import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -13,7 +13,12 @@ import { Button } from '@/components/ui/button';
 
 function App() {
   const { notes, activeNoteId, createNote, setActiveNote, updateNote, getActiveNote } = useNoteStore();
-  const { theme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize } = useSettingsStore(); 
+  const { theme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize, setEditorRef } = useSettingsStore();
+  const editorRef = useRef<MilkdownEditorRef>(null); 
+
+  useEffect(() => {
+    setEditorRef(editorRef);
+  }, [setEditorRef]);
 
   useEffect(() => {
     // Initialize if empty
@@ -64,7 +69,8 @@ function App() {
         <Toolbar />
         <div className="flex-1 relative overflow-hidden">
             {activeNote ? (
-                <MilkdownEditorWrapper 
+                <MilkdownEditorWrapper
+                    ref={editorRef}
                     key={activeNote.id} // Force re-render on note switch
                     initialContent={activeNote.content}
                     onChange={(content) => updateNote(activeNote.id, content)}

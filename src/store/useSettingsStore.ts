@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { MilkdownEditorRef } from '@/components/editor/MilkdownEditor';
 
 interface SettingsState {
   theme: 'light' | 'dark';
@@ -9,6 +10,7 @@ interface SettingsState {
   isSidebarOpen: boolean;
   isAIPanelOpen: boolean;
   showAIButton: boolean;
+  editorRef: React.RefObject<MilkdownEditorRef> | null;
   toggleTheme: () => void;
   setFontSize: (size: number) => void;
   setUiFontSize: (size: number) => void;
@@ -16,6 +18,7 @@ interface SettingsState {
   toggleSidebar: () => void;
   toggleAIPanel: () => void;
   toggleShowAIButton: () => void;
+  setEditorRef: (ref: React.RefObject<MilkdownEditorRef> | null) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -28,6 +31,7 @@ export const useSettingsStore = create<SettingsState>()(
       isSidebarOpen: true,
       isAIPanelOpen: false,
       showAIButton: true,
+      editorRef: null,
       toggleTheme: () =>
         set((state) => {
           const newTheme = state.theme === 'light' ? 'dark' : 'light';
@@ -44,6 +48,7 @@ export const useSettingsStore = create<SettingsState>()(
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
       toggleAIPanel: () => set((state) => ({ isAIPanelOpen: !state.isAIPanelOpen })),
       toggleShowAIButton: () => set((state) => ({ showAIButton: !state.showAIButton })),
+      setEditorRef: (ref) => set({ editorRef: ref }),
     }),
     {
       name: 'markan-settings',

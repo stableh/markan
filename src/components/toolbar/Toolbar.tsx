@@ -6,7 +6,7 @@ import { SettingsModal } from '@/components/settings/SettingsModal';
 import { cn } from '@/lib/utils';
 
 export function Toolbar() {
-  const { theme, toggleTheme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, toggleSidebar, showAIButton } = useSettingsStore();
+  const { theme, toggleTheme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, toggleSidebar, showAIButton, editorRef } = useSettingsStore();
   const { getActiveNote, updateTitle } = useNoteStore();
   const activeNote = getActiveNote();
 
@@ -14,6 +14,13 @@ export function Toolbar() {
     if (activeNote?.content) {
       navigator.clipboard.writeText(activeNote.content);
       toast.success('Copied to clipboard');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      editorRef?.current?.focus();
     }
   };
 
@@ -37,6 +44,7 @@ export function Toolbar() {
               type="text"
               value={activeNote.title}
               onChange={(e) => updateTitle(activeNote.id, e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Untitled"
               className="bg-transparent text-xl font-medium text-center text-foreground/80 focus:outline-none focus:text-foreground placeholder:text-muted-foreground/50 w-full truncate"
           />

@@ -1,11 +1,16 @@
-import { useEffect, useRef } from 'react';
-import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/react';
+import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react';
 import { Crepe } from '@milkdown/crepe';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
+import { editorViewCtx } from '@milkdown/core';
 import '@milkdown/crepe/theme/common/style.css';
 import '@/milkdown-slash-menu.css';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { FloatingAI } from './FloatingAI';
+
+export interface MilkdownEditorRef {
+  focus: () => void;
+}
 
 interface MilkdownEditorProps {
   initialContent: string;
@@ -13,9 +18,10 @@ interface MilkdownEditorProps {
   readOnly?: boolean;
 }
 
-const Editor = ({ initialContent, onChange, readOnly = false }: MilkdownEditorProps) => {
+const Editor = ({ initialContent, onChange, readOnly = false, editorRef }: MilkdownEditorProps & { editorRef?: React.RefObject<MilkdownEditorRef> }) => {
   const { theme } = useSettingsStore();
-  
+  const [loading, getInstance] = useInstance();
+
   useEditor((root) => {
     const crepe = new Crepe({
       root,
@@ -45,27 +51,45 @@ const Editor = ({ initialContent, onChange, readOnly = false }: MilkdownEditorPr
     return crepe;
   }, []); // Empty dependency array to prevent re-initialization on content change
 
+  useImperativeHandle(editorRef, () => ({
+    focus: () => {
+      const editor = getInstance();
+      if (editor) {
+        editor.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          view.focus();
+        });
+      }
+    }
+  }), [getInstance]);
+
   return <Milkdown />;
 };
 
-export default function MilkdownEditorWrapper(props: MilkdownEditorProps) {
-  const { fontSize, pageWidth } = useSettingsStore();
+const MilkdownEditorWrapper = forwardRef<MilkdownEditorRef, MilkdownEditorProps>(
+  function MilkdownEditorWrapper(props, ref) {
+    const { fontSize, pageWidth } = useSettingsStore();
+    const internalRef = useRef<MilkdownEditorRef>(null);
+    const editorRef = (ref as React.RefObject<MilkdownEditorRef>) || internalRef;
 
-  return (
-    <MilkdownProvider>
-      <div 
-        className="h-full w-full overflow-hidden milkdown-container relative"
-        style={{ 
-          '--editor-font-size': `${fontSize}px`,
-        } as React.CSSProperties}
-      >
-        <div className={`h-full overflow-y-auto ${pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background' : 'w-full'}`}>
-          <div style={{ fontSize: `${fontSize}px` }}>
-            <Editor {...props} />
+    return (
+      <MilkdownProvider>
+        <div
+          className="h-full w-full overflow-hidden milkdown-container relative"
+          style={{
+            '--editor-font-size': `${fontSize}px`,
+          } as React.CSSProperties}
+        >
+          <div className={`h-full overflow-y-auto ${pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background' : 'w-full'}`}>
+            <div style={{ fontSize: `${fontSize}px` }}>
+              <Editor {...props} editorRef={editorRef} />
+            </div>
+            <FloatingAI />
           </div>
-          <FloatingAI />
         </div>
-      </div>
-    </MilkdownProvider>
-  );
-}
+      </MilkdownProvider>
+    );
+  }
+);
+
+export default MilkdownEditorWrapper;
