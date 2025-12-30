@@ -6,7 +6,7 @@ import { editorViewCtx } from '@milkdown/core';
 import '@milkdown/crepe/theme/common/style.css';
 import '@/milkdown-slash-menu.css';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { FloatingAI } from './FloatingAI';
+// import { FloatingAI } from './FloatingAI';
 
 export interface MilkdownEditorRef {
   focus: () => void;
@@ -91,7 +91,7 @@ const MilkdownEditorWrapper = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             <div style={{ fontSize: `${fontSize}px` }}>
               <Editor {...props} editorRef={editorRef} />
             </div>
-            <FloatingAI />
+            {/* <FloatingAI /> */}
           </div>
         </div>
       </MilkdownProvider>
