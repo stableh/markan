@@ -21,6 +21,7 @@ interface MilkdownEditorProps {
 const Editor = ({ initialContent, onChange, readOnly = false, editorRef }: MilkdownEditorProps & { editorRef?: React.RefObject<MilkdownEditorRef> }) => {
   const { theme } = useSettingsStore();
   const [loading, getInstance] = useInstance();
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   useEditor((root) => {
     const crepe = new Crepe({
@@ -63,7 +64,11 @@ const Editor = ({ initialContent, onChange, readOnly = false, editorRef }: Milkd
     }
   }), [getInstance]);
 
-  return <Milkdown />;
+  return (
+    <div ref={editorContainerRef} className="h-full">
+      <Milkdown />
+    </div>
+  );
 };
 
 const MilkdownEditorWrapper = forwardRef<MilkdownEditorRef, MilkdownEditorProps>(
@@ -80,7 +85,9 @@ const MilkdownEditorWrapper = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
             '--editor-font-size': `${fontSize}px`,
           } as React.CSSProperties}
         >
-          <div className={`h-full overflow-y-auto ${pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background' : 'w-full'}`}>
+          <div
+            className={`h-full overflow-y-auto ${pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background' : 'w-full'}`}
+          >
             <div style={{ fontSize: `${fontSize}px` }}>
               <Editor {...props} editorRef={editorRef} />
             </div>

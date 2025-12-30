@@ -8,6 +8,9 @@ export interface Note {
   content: string;
   createdAt: number;
   updatedAt: number;
+  filePath?: string;           // 파일 경로 (폴더 열기 시)
+  isDirty: boolean;            // 변경 여부 추적
+  lastSavedContent?: string;   // 마지막 저장된 내용
 }
 
 interface NoteState {
@@ -19,6 +22,9 @@ interface NoteState {
   deleteNote: (id: string) => void;
   setActiveNote: (id: string) => void;
   getActiveNote: () => Note | undefined;
+  markNoteAsSaved: (id: string) => void;
+  setNoteFilePath: (id: string, filePath: string) => void;
+  setNotes: (notes: Note[]) => void;
 }
 
 export const useNoteStore = create<NoteState>()(
@@ -34,6 +40,8 @@ export const useNoteStore = create<NoteState>()(
           content: '',
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          isDirty: true,  // 새로 생성된 노트는 저장되지 않음
+          lastSavedContent: '',
         };
         set((state) => ({
           notes: [newNote, ...state.notes],
@@ -45,10 +53,12 @@ export const useNoteStore = create<NoteState>()(
         set((state) => ({
           notes: state.notes.map((note) => {
             if (note.id === id) {
+              const isDirty = content !== (note.lastSavedContent ?? '');
               return {
                 ...note,
                 content,
                 updatedAt: Date.now(),
+                isDirty,
               };
             }
             return note;
@@ -64,6 +74,7 @@ export const useNoteStore = create<NoteState>()(
                 ...note,
                 title,
                 updatedAt: Date.now(),
+                isDirty: true,  // 제목 변경도 dirty로 표시
               };
             }
             return note;
@@ -92,6 +103,39 @@ export const useNoteStore = create<NoteState>()(
       getActiveNote: () => {
         const state = get();
         return state.notes.find((n) => n.id === state.activeNoteId);
+      },
+
+      markNoteAsSaved: (id) => {
+        set((state) => ({
+          notes: state.notes.map((note) => {
+            if (note.id === id) {
+              return {
+                ...note,
+                isDirty: false,
+                lastSavedContent: note.content,
+              };
+            }
+            return note;
+          }),
+        }));
+      },
+
+      setNoteFilePath: (id, filePath) => {
+        set((state) => ({
+          notes: state.notes.map((note) => {
+            if (note.id === id) {
+              return {
+                ...note,
+                filePath,
+              };
+            }
+            return note;
+          }),
+        }));
+      },
+
+      setNotes: (notes) => {
+        set({ notes });
       },
     }),
     {

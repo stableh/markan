@@ -1,4 +1,4 @@
-import { Copy, Sun, Moon, Sparkles, PanelLeft, Settings } from 'lucide-react';
+import { Copy, Sun, Moon, Sparkles, PanelLeft, Settings, Save, SaveOff } from 'lucide-react';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNoteStore } from '@/store/useNoteStore';
 import { toast } from 'sonner';
@@ -40,14 +40,27 @@ export function Toolbar() {
       {/* Centered Title */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-full max-w-[300px] titlebar-no-drag">
         {activeNote && (
-          <input
-              type="text"
-              value={activeNote.title}
-              onChange={(e) => updateTitle(activeNote.id, e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Untitled"
-              className="bg-transparent text-xl font-medium text-center text-foreground/80 focus:outline-none focus:text-foreground placeholder:text-muted-foreground/50 w-full truncate"
-          />
+          <div className="flex items-center gap-1.5 w-full justify-center">
+            <div className="relative group">
+              {activeNote.isDirty ? (
+                <SaveOff size={18} className="text-muted-foreground shrink-0" />
+              ) : (
+                <Save size={18} className="text-muted-foreground shrink-0" />
+              )}
+              {/* Floating tooltip */}
+              <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                {activeNote.isDirty ? "Unsaved changes" : "Saved"}
+              </div>
+            </div>
+            <input
+                type="text"
+                value={activeNote.title}
+                onChange={(e) => updateTitle(activeNote.id, e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Untitled"
+                className="bg-transparent text-xl font-medium text-center text-foreground/80 focus:outline-none focus:text-foreground placeholder:text-muted-foreground/50 w-full truncate"
+            />
+          </div>
         )}
       </div>
 

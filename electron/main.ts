@@ -1,6 +1,8 @@
-import { app, shell, BrowserWindow, ipcMain, nativeTheme } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, nativeTheme, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import fs from 'fs/promises'
+import path from 'path'
 
 function getIconPath(): string {
   const iconName = nativeTheme.shouldUseDarkColors
@@ -25,6 +27,102 @@ function updateAppIcon(window: BrowserWindow | null) {
   if (window) {
     window.setIcon(iconPath)
   }
+}
+
+function setupFileSystemHandlers(): void {
+  // 폴더 선택 다이얼로그
+  ipcMain.handle('dialog:openFolder', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory']
+    })
+    return result.filePaths[0]
+  })
+
+  // 폴더 내 .md 파일 읽기
+  ipcMain.handle('fs:readFolder', async (_, folderPath: string) => {
+    try {
+      const files = await fs.readdir(folderPath)
+      const mdFiles = files.filter(f => f.endsWith('.md'))
+
+      const fileDetails = await Promise.all(
+        mdFiles.map(async (file) => {
+          const filePath = path.join(folderPath, file)
+          const stats = await fs.stat(filePath)
+          const content = await fs.readFile(filePath, 'utf-8')
+
+          // 파일명에서 제목 추출 (.md 제거)
+          const title = file.replace('.md', '')
+
+          return {
+            filePath,
+            fileName: file,
+            title,
+            content,
+            modifiedTime: stats.mtimeMs,
+            createdTime: stats.birthtimeMs
+          }
+        })
+      )
+
+      // 수정 시간 기준 최신순 정렬
+      return fileDetails.sort((a, b) => b.modifiedTime - a.modifiedTime)
+    } catch (error) {
+      console.error('Error reading folder:', error)
+      return []
+    }
+  })
+
+  // 파일 읽기
+  ipcMain.handle('fs:readFile', async (_, filePath: string) => {
+    try {
+      const content = await fs.readFile(filePath, 'utf-8')
+      return content
+    } catch (error) {
+      console.error('Error reading file:', error)
+      return null
+    }
+  })
+
+  // 파일 저장
+  ipcMain.handle('fs:writeFile', async (_, filePath: string, content: string) => {
+    try {
+      // 디렉토리가 없으면 생성
+      const dir = path.dirname(filePath)
+      await fs.mkdir(dir, { recursive: true })
+
+      await fs.writeFile(filePath, content, 'utf-8')
+      return true
+    } catch (error) {
+      console.error('Error writing file:', error)
+      return false
+    }
+  })
+
+  // 파일 삭제
+  ipcMain.handle('fs:deleteFile', async (_, filePath: string) => {
+    try {
+      await fs.unlink(filePath)
+      return true
+    } catch (error) {
+      console.error('Error deleting file:', error)
+      return false
+    }
+  })
+
+  // 앱 데이터 경로
+  ipcMain.handle('app:getPath', async (_, name: string) => {
+    return app.getPath(name as any)
+  })
+
+  // 파일 존재 여부 확인
+  ipcMain.handle('fs:exists', async (_, filePath: string) => {
+    try {
+      await fs.access(filePath)
+      return true
+    } catch {
+      return false
+    }
+  })
 }
 
 function createWindow(): void {
@@ -87,6 +185,9 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  // File system IPC handlers
+  setupFileSystemHandlers()
 
   createWindow()
 

@@ -1,12 +1,14 @@
 import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { cn } from '@/lib/utils';
-import { Plus, Trash2, FileText, FolderOpen, FileUp } from 'lucide-react';
+import { Plus, Trash2, FileText, FolderOpen, FileUp, Save, SaveOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export function Sidebar() {
   const { notes, activeNoteId, createNote, setActiveNote, deleteNote, updateTitle } = useNoteStore();
   const { theme } = useSettingsStore();
+  const { openFolder } = useWorkspaceStore();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -56,6 +58,7 @@ export function Sidebar() {
       {/* Folder/File Open Buttons */}
       <div className="flex items-center justify-center gap-2 mb-3 px-4">
         <button
+          onClick={openFolder}
           className="flex-1 flex items-center justify-center h-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
           title="Open Folder"
         >
@@ -95,13 +98,20 @@ export function Sidebar() {
             )}
           >
             <div className="flex flex-col gap-0.5 overflow-hidden w-full">
-              <input
-                value={note.title}
-                onChange={(e) => updateTitle(note.id, e.target.value)}
-                onFocus={() => setActiveNote(note.id)}
-                className="bg-transparent font-medium text-sm w-full focus:outline-none truncate placeholder:text-muted-foreground/50"
-                placeholder="Untitled"
-              />
+              <div className="flex items-center gap-1.5">
+                {note.isDirty ? (
+                  <SaveOff size={10} className="text-muted-foreground/70 shrink-0" />
+                ) : (
+                  <Save size={10} className="text-muted-foreground/70 shrink-0" />
+                )}
+                <input
+                  value={note.title}
+                  onChange={(e) => updateTitle(note.id, e.target.value)}
+                  onFocus={() => setActiveNote(note.id)}
+                  className="bg-transparent font-medium text-sm w-full focus:outline-none truncate placeholder:text-muted-foreground/50"
+                  placeholder="Untitled"
+                />
+              </div>
               <div className="text-[11px] text-muted-foreground/60 truncate h-4 select-none">
                 {note.content
                   .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images

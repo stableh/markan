@@ -6,15 +6,22 @@ import MilkdownEditorWrapper, { type MilkdownEditorRef } from '@/components/edit
 import { AIPanel } from '@/components/ai/AIPanel';
 import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
+import { useAutosave } from '@/hooks/useAutosave';
 import { Toaster } from 'sonner';
+import { toast } from 'sonner';
 import { Sparkles, FilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 function App() {
-  const { notes, activeNoteId, createNote, setActiveNote, updateNote, getActiveNote } = useNoteStore();
-  const { theme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize, setEditorRef } = useSettingsStore();
-  const editorRef = useRef<MilkdownEditorRef>(null); 
+  const { createNote, setActiveNote, updateNote, getActiveNote } = useNoteStore();
+  const { isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize, setEditorRef } = useSettingsStore();
+  const { workspacePath, saveNote, saveAllNotes } = useWorkspaceStore();
+  const editorRef = useRef<MilkdownEditorRef>(null);
+
+  // Autosave 훅 활성화
+  useAutosave();
 
   useEffect(() => {
     setEditorRef(editorRef);
@@ -32,17 +39,42 @@ function App() {
     };
     init();
 
-    // Keyboard shortcut for AI Panel (Cmd+J or Ctrl+J)
-    const handleKeyDown = (e: KeyboardEvent) => {
+    // Keyboard shortcuts
+    const handleKeyDown = async (e: KeyboardEvent) => {
+        // Cmd+J or Ctrl+J - AI Panel 토글
         if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
             e.preventDefault();
             toggleAIPanel();
+        }
+
+        // Cmd+S or Ctrl+S - 저장
+        if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+            e.preventDefault();
+
+            if (!workspacePath) {
+                // 폴더가 설정되지 않은 경우 - 폴더 선택 후 전체 저장
+                const folderPath = await window.api.openFolder();
+                if (folderPath) {
+                    useWorkspaceStore.getState().setWorkspacePath(folderPath);
+                    await saveAllNotes();
+                    toast.success('All notes saved to folder');
+                }
+            } else {
+                // 폴더가 설정된 경우 - 현재 노트만 저장
+                const activeNote = getActiveNote();
+                if (activeNote && activeNote.isDirty) {
+                    await saveNote(activeNote.id);
+                    toast.success('Note saved');
+                } else if (activeNote) {
+                    toast.info('No changes to save');
+                }
+            }
         }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [createNote, setActiveNote, toggleAIPanel]);
+  }, [createNote, setActiveNote, toggleAIPanel, workspacePath, saveNote, saveAllNotes, getActiveNote]);
 
   useEffect(() => {
     document.documentElement.style.fontSize = `${uiFontSize}px`;
@@ -104,7 +136,7 @@ function App() {
       </div>
       </div>
       
-      <Toaster position="top-center" />
+      <Toaster position="bottom-left" />
     </div>
   );
 }
