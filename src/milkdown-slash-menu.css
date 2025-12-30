@@ -5,3 +5,20 @@
     /* padding: 12px 12px 0; */
     padding: 0 12px;
 }
+
+/* Block Handle 스타일 커스터마이징 */
+.milkdown .milkdown-block-handle {
+    gap: 0px; /* 기본 2px에서 0px로 변경 */
+    margin-left: 10px !important;
+}
+
+.milkdown .milkdown-block-handle .operation-item {
+    width: 24px; /* 기본 32px에서 24px로 축소 */
+    height: 24px;
+    padding: 2px; /* 기본 4px에서 2px로 축소 */
+}
+
+.milkdown .milkdown-block-handle .operation-item svg {
+    width: 20px; /* 기본 24px에서 20px로 축소 */
+    height: 20px;
+}
