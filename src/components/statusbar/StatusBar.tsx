@@ -20,20 +20,20 @@ export function StatusBar() {
   const fullPath = workspacePath || 'No folder selected';
 
   return (
-    <footer className="bg-background/80 backdrop-blur-sm px-4 py-2 text-[13px] text-muted-foreground shrink-0 select-none z-10">
+    <footer className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 select-none">
       <div className="flex items-center justify-center">
-        <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-muted/60 border border-border/60 shadow-sm text-muted-foreground">
+        <div className="flex items-center gap-3 px-4 py-1 rounded-full bg-[#2E2E32] border border-border/40 shadow-[0_6px_20px_rgba(0,0,0,0.35)] text-foreground/80 text-sm">
           <div className="flex items-center gap-1">
             <span className="font-medium">{chars}</span>
             <span>chars</span>
           </div>
-          <div className="h-3 w-px bg-border/70" />
+          <div className="h-3 w-px bg-foreground/20" />
           <div className="flex items-center gap-1">
             <span className="font-medium">{lines}</span>
             <span>lines</span>
           </div>
-          <div className="h-3 w-px bg-border/70" />
-          <div className="max-w-[320px] truncate text-foreground/80" title={fullPath}>
+          <div className="h-3 w-px bg-foreground/20" />
+          <div className="max-w-[320px] truncate text-foreground/70" title={fullPath}>
             {fullPath}
           </div>
         </div>

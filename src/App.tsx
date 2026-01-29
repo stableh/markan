@@ -129,8 +129,8 @@ function App() {
                     </Button>
                 </div>
             )}
+            <StatusBar />
         </div>
-        <StatusBar />
       </main>
 
       {/* Right AI Panel Wrapper */}
