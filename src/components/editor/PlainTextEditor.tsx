@@ -34,18 +34,19 @@ const PlainTextEditor = forwardRef<MilkdownEditorRef, PlainTextEditorProps>(
         className="h-full w-full overflow-y-auto plain-editor-container relative"
         style={{
           '--editor-font-size': `${fontSize}px`,
-          '--editor-padding-inline': pageWidth === 'narrow' ? '12rem' : '2rem',
         } as CSSProperties}
       >
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={(e) => onChange(e.target.value)}
-          readOnly={readOnly}
-          spellCheck
-          className="plain-editor"
-          placeholder="Start writing..."
-        />
+        <div className={pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background' : 'w-full'}>
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => onChange(e.target.value)}
+            readOnly={readOnly}
+            spellCheck
+            className="plain-editor"
+            placeholder="Start writing..."
+          />
+        </div>
       </div>
     );
   }

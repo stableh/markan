@@ -285,7 +285,7 @@
     resize: none;
     background: transparent;
     color: var(--foreground);
-    padding: 1rem var(--editor-padding-inline, 12rem);
+    padding: 1rem 12rem;
     outline: none;
     border: none;
     overflow: hidden;
