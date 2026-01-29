@@ -17,3 +17,19 @@ export const stripMarkdown = (markdown: string) => {
 
   return text;
 };
+
+const PARAGRAPH_BREAK = '\u0000';
+
+export const toPlainDisplay = (markdown: string) => {
+  let text = markdown.replace(/\r\n/g, '\n');
+  text = text.replace(/\n{2,}/g, PARAGRAPH_BREAK);
+  text = text.replace(/\n/g, ' ');
+  text = text.replace(new RegExp(PARAGRAPH_BREAK, 'g'), '\n');
+  return text;
+};
+
+export const fromPlainDisplay = (displayText: string) => {
+  let text = displayText.replace(/\r\n/g, '\n');
+  text = text.replace(/\n+/g, '\n\n');
+  return text;
+};

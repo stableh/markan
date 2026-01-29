@@ -2,6 +2,7 @@ import { useImperativeHandle, forwardRef, useRef, useLayoutEffect } from 'react'
 import type { CSSProperties } from 'react';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import type { MilkdownEditorRef } from '@/components/editor/MilkdownEditor';
+import { toPlainDisplay, fromPlainDisplay } from '@/lib/markdown';
 
 interface PlainTextEditorProps {
   content: string;
@@ -20,6 +21,8 @@ const PlainTextEditor = forwardRef<MilkdownEditorRef, PlainTextEditorProps>(
       },
     }));
 
+    const displayValue = toPlainDisplay(content);
+
     useLayoutEffect(() => {
       const el = textareaRef.current;
       if (!el) return;
@@ -27,7 +30,7 @@ const PlainTextEditor = forwardRef<MilkdownEditorRef, PlainTextEditorProps>(
       const parentHeight = el.parentElement?.clientHeight ?? 0;
       const nextHeight = Math.max(el.scrollHeight, parentHeight);
       el.style.height = `${nextHeight}px`;
-    }, [content, fontSize, pageWidth]);
+    }, [displayValue, fontSize, pageWidth]);
 
     return (
       <div
@@ -39,8 +42,8 @@ const PlainTextEditor = forwardRef<MilkdownEditorRef, PlainTextEditorProps>(
         <div className={pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background' : 'w-full'}>
           <textarea
             ref={textareaRef}
-            value={content}
-            onChange={(e) => onChange(e.target.value)}
+            value={displayValue}
+            onChange={(e) => onChange(fromPlainDisplay(e.target.value))}
             readOnly={readOnly}
             spellCheck
             className="plain-editor"
