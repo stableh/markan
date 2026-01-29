@@ -80,14 +80,12 @@ const MilkdownEditorWrapper = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     return (
       <MilkdownProvider>
         <div
-          className="h-full w-full overflow-hidden milkdown-container relative"
+          className="h-full w-full overflow-y-auto milkdown-container relative"
           style={{
             '--editor-font-size': `${fontSize}px`,
           } as React.CSSProperties}
         >
-          <div
-            className={`h-full overflow-y-auto ${pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background' : 'w-full'}`}
-          >
+          <div className={pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background' : 'w-full'}>
             <div style={{ fontSize: `${fontSize}px` }}>
               <Editor {...props} editorRef={editorRef} />
             </div>

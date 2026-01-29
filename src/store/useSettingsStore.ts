@@ -4,6 +4,7 @@ import type { MilkdownEditorRef } from '@/components/editor/MilkdownEditor';
 
 interface SettingsState {
   theme: 'light' | 'dark';
+  editorMode: 'rich' | 'plain';
   fontSize: number;
   uiFontSize: number;
   pageWidth: 'narrow' | 'wide';
@@ -12,6 +13,7 @@ interface SettingsState {
   showAIButton: boolean;
   editorRef: React.RefObject<MilkdownEditorRef> | null;
   toggleTheme: () => void;
+  toggleEditorMode: () => void;
   setFontSize: (size: number) => void;
   setUiFontSize: (size: number) => void;
   setPageWidth: (width: 'narrow' | 'wide') => void;
@@ -25,6 +27,7 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       theme: 'dark',
+      editorMode: 'rich',
       fontSize: 16,
       uiFontSize: 14,
       pageWidth: 'narrow',
@@ -42,6 +45,10 @@ export const useSettingsStore = create<SettingsState>()(
           }
           return { theme: newTheme };
         }),
+      toggleEditorMode: () =>
+        set((state) => ({
+          editorMode: state.editorMode === 'rich' ? 'plain' : 'rich',
+        })),
       setFontSize: (size) => set({ fontSize: size }),
       setUiFontSize: (size) => set({ uiFontSize: size }),
       setPageWidth: (width) => set({ pageWidth: width }),

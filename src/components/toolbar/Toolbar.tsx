@@ -1,4 +1,4 @@
-import { Copy, Sun, Moon, Sparkles, PanelLeft, Settings, Save, SaveOff } from 'lucide-react';
+import { Copy, Sun, Moon, Sparkles, PanelLeft, Settings, Save, SaveOff, Type } from 'lucide-react';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNoteStore } from '@/store/useNoteStore';
 import { toast } from 'sonner';
@@ -6,7 +6,7 @@ import { SettingsModal } from '@/components/settings/SettingsModal';
 import { cn } from '@/lib/utils';
 
 export function Toolbar() {
-  const { theme, toggleTheme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, toggleSidebar, showAIButton, editorRef } = useSettingsStore();
+  const { theme, toggleTheme, isAIPanelOpen, toggleAIPanel, isSidebarOpen, toggleSidebar, showAIButton, editorRef, editorMode, toggleEditorMode } = useSettingsStore();
   const { getActiveNote, updateTitle } = useNoteStore();
   const activeNote = getActiveNote();
 
@@ -72,6 +72,18 @@ export function Toolbar() {
           title="Copy Markdown"
         >
           <Copy size={16} />
+        </button>
+
+        <button
+          onClick={toggleEditorMode}
+          className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors ${
+            editorMode === 'plain'
+              ? 'text-primary bg-primary/10'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+          title={editorMode === 'plain' ? 'Plain Text Mode' : 'Rich Text Mode'}
+        >
+          <Type size={16} />
         </button>
 
         <SettingsModal>

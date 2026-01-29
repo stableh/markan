@@ -1,16 +1,19 @@
 import { useNoteStore } from '@/store/useNoteStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { stripMarkdown } from '@/lib/markdown';
 
 export function StatusBar() {
   const { getActiveNote } = useNoteStore();
+  const { editorMode } = useSettingsStore();
   const activeNote = getActiveNote();
   const content = activeNote?.content || '';
 
-  // Character count (including spaces)
-  const chars = content.length;
+  const renderedText = editorMode === 'plain' ? content : stripMarkdown(content);
+  const chars = renderedText.length;
 
   // Line count logic improved for Markdown
   // Filter out empty lines to count only lines with content
-  const nonEmptyLines = content.split('\n').filter(line => line.trim().length > 0).length;
+  const nonEmptyLines = renderedText.split('\n').filter(line => line.trim().length > 0).length;
   const lines = Math.max(1, nonEmptyLines);
 
   return (

@@ -277,6 +277,31 @@
     color: var(--selection-foreground);
 }
 
+/* Plain Text Editor */
+.plain-editor {
+    width: 100%;
+    height: auto;
+    min-height: 100%;
+    resize: none;
+    background: transparent;
+    color: var(--foreground);
+    padding: 1rem var(--editor-padding-inline, 12rem);
+    outline: none;
+    border: none;
+    overflow: hidden;
+    box-sizing: border-box;
+    font-family: var(--font-display);
+    font-size: var(--editor-font-size, 16px);
+    line-height: 1.6;
+    caret-color: var(--foreground);
+    white-space: pre-wrap;
+}
+
+.plain-editor::selection {
+    background-color: var(--selection-background);
+    color: var(--selection-foreground);
+}
+
 /* 블록 선택(Drag Handle로 선택) 시 스타일 */
 .milkdown-container .milkdown .ProseMirror *::selection {
     background-color: var(--selection-background);

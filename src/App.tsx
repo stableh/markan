@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/sidebar/Sidebar';
 import { Toolbar } from '@/components/toolbar/Toolbar';
 import { StatusBar } from '@/components/statusbar/StatusBar';
 import MilkdownEditorWrapper, { type MilkdownEditorRef } from '@/components/editor/MilkdownEditor';
+import PlainTextEditor from '@/components/editor/PlainTextEditor';
 import { AIPanel } from '@/components/ai/AIPanel';
 import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -16,7 +17,7 @@ import { Button } from '@/components/ui/button';
 
 function App() {
   const { createNote, setActiveNote, updateNote, getActiveNote } = useNoteStore();
-  const { isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize, setEditorRef } = useSettingsStore();
+  const { isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize, setEditorRef, editorMode } = useSettingsStore();
   const { workspacePath, saveNote, saveAllNotes } = useWorkspaceStore();
   const editorRef = useRef<MilkdownEditorRef>(null);
 
@@ -101,12 +102,21 @@ function App() {
         <Toolbar />
         <div className="flex-1 relative overflow-hidden">
             {activeNote ? (
-                <MilkdownEditorWrapper
+                editorMode === 'plain' ? (
+                  <PlainTextEditor
+                    ref={editorRef}
+                    key={activeNote.id}
+                    content={activeNote.content}
+                    onChange={(content) => updateNote(activeNote.id, content)}
+                  />
+                ) : (
+                  <MilkdownEditorWrapper
                     ref={editorRef}
                     key={activeNote.id} // Force re-render on note switch
                     initialContent={activeNote.content}
                     onChange={(content) => updateNote(activeNote.id, content)}
-                />
+                  />
+                )
             ) : (
                 <div className="flex-1 flex items-center justify-center h-full">
                     <Button 
