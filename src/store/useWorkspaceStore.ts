@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useNoteStore, Note } from './useNoteStore';
-import { generateFileName, joinPath } from '@/lib/fileUtils';
+import { generateFileNameWithExtension, joinPath } from '@/lib/fileUtils';
 import type { FileDetail } from '@/types/electron';
 
 interface WorkspaceState {
@@ -31,27 +31,42 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       loadWorkspace: async (path) => {
         try {
-          // 폴더 내 .md 파일 읽기
+          // 폴더 내 .md/.txt 파일 읽기
           const fileDetails: FileDetail[] = await window.api.readFolder(path);
 
           // FileDetail을 Note로 변환
-          const notes: Note[] = fileDetails.map((file) => ({
+          const workspaceNotes: Note[] = fileDetails.map((file) => ({
             id: crypto.randomUUID(),
             title: file.title,
             content: file.content,
             createdAt: file.createdTime,
             updatedAt: file.modifiedTime,
             filePath: file.filePath,
+            sourceType: 'workspace',
+            extension: file.extension,
             isDirty: false,
             lastSavedContent: file.content,
           }));
 
+          const currentNotes = useNoteStore.getState().notes;
+          const unfiledNotes = currentNotes.filter((note) => {
+            if (note.sourceType) return note.sourceType === 'unfiled';
+            return !note.filePath;
+          });
+
+          // Keep unfiled notes and replace only workspace-backed notes with the selected folder content.
+          const mergedNotes = [...unfiledNotes, ...workspaceNotes].sort(
+            (a, b) => b.updatedAt - a.updatedAt
+          );
+
           // NoteStore에 노트 설정
-          useNoteStore.getState().setNotes(notes);
+          useNoteStore.getState().setNotes(mergedNotes);
 
           // 첫 번째 노트 활성화
-          if (notes.length > 0) {
-            useNoteStore.getState().setActiveNote(notes[0].id);
+          const activeId = useNoteStore.getState().activeNoteId;
+          const stillExists = mergedNotes.some((n) => n.id === activeId);
+          if (!stillExists && mergedNotes.length > 0) {
+            useNoteStore.getState().setActiveNote(mergedNotes[0].id);
           }
 
           // 워크스페이스 경로 설정
@@ -94,7 +109,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             const existingFiles = files.map((f) => f.fileName);
 
             // 중복되지 않는 파일명 생성
-            const fileName = generateFileName(note.title, existingFiles);
+            const extension = note.extension ?? 'md';
+            const fileName = generateFileNameWithExtension(note.title, existingFiles, extension);
             filePath = joinPath(workspacePath, fileName);
 
             // NoteStore에 파일 경로 설정

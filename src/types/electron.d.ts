@@ -3,6 +3,7 @@ export interface FileDetail {
   fileName: string;
   title: string;
   content: string;
+  extension: 'md' | 'txt';
   modifiedTime: number;
   createdTime: number;
 }

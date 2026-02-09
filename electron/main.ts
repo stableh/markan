@@ -42,22 +42,27 @@ function setupFileSystemHandlers(): void {
   ipcMain.handle('fs:readFolder', async (_, folderPath: string) => {
     try {
       const files = await fs.readdir(folderPath)
-      const mdFiles = files.filter(f => f.endsWith('.md'))
+      const noteFiles = files.filter((f) => {
+        const ext = path.extname(f).toLowerCase()
+        return ext === '.md' || ext === '.txt'
+      })
 
       const fileDetails = await Promise.all(
-        mdFiles.map(async (file) => {
+        noteFiles.map(async (file) => {
           const filePath = path.join(folderPath, file)
           const stats = await fs.stat(filePath)
           const content = await fs.readFile(filePath, 'utf-8')
+          const extension = path.extname(file).toLowerCase() === '.txt' ? 'txt' : 'md'
 
-          // 파일명에서 제목 추출 (.md 제거)
-          const title = file.replace('.md', '')
+          // 파일명에서 제목 추출 (확장자 제거)
+          const title = file.replace(/\.(md|txt)$/i, '')
 
           return {
             filePath,
             fileName: file,
             title,
             content,
+            extension,
             modifiedTime: stats.mtimeMs,
             createdTime: stats.birthtimeMs
           }

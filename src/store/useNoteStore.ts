@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { v4 as uuidv4 } from 'uuid';
+
+export type NoteSourceType = 'unfiled' | 'workspace';
+export type NoteExtension = 'md' | 'txt';
 
 export interface Note {
   id: string;
@@ -9,6 +11,8 @@ export interface Note {
   createdAt: number;
   updatedAt: number;
   filePath?: string;           // 파일 경로 (폴더 열기 시)
+  sourceType: NoteSourceType;  // 문서 출처 구분 (미저장/워크스페이스)
+  extension: NoteExtension;    // 파일 확장자
   isDirty: boolean;            // 변경 여부 추적
   lastSavedContent?: string;   // 마지막 저장된 내용
 }
@@ -19,6 +23,7 @@ interface NoteState {
   createNote: () => void;
   updateNote: (id: string, content: string) => void;
   updateTitle: (id: string, title: string) => void;
+  setNoteExtension: (id: string, extension: NoteExtension) => void;
   deleteNote: (id: string) => void;
   setActiveNote: (id: string) => void;
   getActiveNote: () => Note | undefined;
@@ -40,6 +45,8 @@ export const useNoteStore = create<NoteState>()(
           content: '',
           createdAt: Date.now(),
           updatedAt: Date.now(),
+          sourceType: 'unfiled',
+          extension: 'md',
           isDirty: true,  // 새로 생성된 노트는 저장되지 않음
           lastSavedContent: '',
         };
@@ -75,6 +82,22 @@ export const useNoteStore = create<NoteState>()(
                 title,
                 updatedAt: Date.now(),
                 isDirty: true,  // 제목 변경도 dirty로 표시
+              };
+            }
+            return note;
+          }),
+        }));
+      },
+
+      setNoteExtension: (id, extension) => {
+        set((state) => ({
+          notes: state.notes.map((note) => {
+            if (note.id === id) {
+              return {
+                ...note,
+                extension,
+                updatedAt: Date.now(),
+                isDirty: true,
               };
             }
             return note;
@@ -121,12 +144,15 @@ export const useNoteStore = create<NoteState>()(
       },
 
       setNoteFilePath: (id, filePath) => {
+        const extension: NoteExtension = filePath.toLowerCase().endsWith('.txt') ? 'txt' : 'md';
         set((state) => ({
           notes: state.notes.map((note) => {
             if (note.id === id) {
               return {
                 ...note,
                 filePath,
+                sourceType: 'workspace',
+                extension,
               };
             }
             return note;

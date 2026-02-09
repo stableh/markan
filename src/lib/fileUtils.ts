@@ -32,6 +32,23 @@ export function generateFileName(title: string, existingFiles: string[]): string
   return fileName;
 }
 
+export function generateFileNameWithExtension(
+  title: string,
+  existingFiles: string[],
+  extension: 'md' | 'txt'
+): string {
+  const baseName = sanitizeFileName(title) || 'Untitled';
+  let fileName = `${baseName}.${extension}`;
+  let counter = 1;
+
+  while (existingFiles.includes(fileName)) {
+    fileName = `${baseName}-${counter}.${extension}`;
+    counter++;
+  }
+
+  return fileName;
+}
+
 /**
  * 파일 경로에서 파일명만 추출
  */
