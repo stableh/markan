@@ -18,18 +18,14 @@ export const stripMarkdown = (markdown: string) => {
   return text;
 };
 
-const PARAGRAPH_BREAK = '\u0000';
-
 export const toPlainDisplay = (markdown: string) => {
-  let text = markdown.replace(/\r\n/g, '\n');
-  text = text.replace(/\n{2,}/g, PARAGRAPH_BREAK);
-  text = text.replace(/\n/g, ' ');
-  text = text.replace(new RegExp(PARAGRAPH_BREAK, 'g'), '\n');
-  return text;
+  // Plain mode shows one visual line break for each markdown paragraph break.
+  // Use pairwise replacement to preserve repeated empty lines.
+  return markdown.replace(/\r\n/g, '\n').replace(/\n\n/g, '\n');
 };
 
 export const fromPlainDisplay = (displayText: string) => {
-  let text = displayText.replace(/\r\n/g, '\n');
-  text = text.replace(/\n+/g, '\n\n');
-  return text;
+  // Convert each visual line break back to a markdown paragraph break.
+  // This keeps the count of repeated Enter presses.
+  return displayText.replace(/\r\n/g, '\n').replace(/\n/g, '\n\n');
 };
