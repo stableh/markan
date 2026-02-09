@@ -1,16 +1,14 @@
 import { useNoteStore } from '@/store/useNoteStore';
-import { useSettingsStore } from '@/store/useSettingsStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { stripMarkdown } from '@/lib/markdown';
 
 export function StatusBar() {
   const { getActiveNote } = useNoteStore();
-  const { editorMode } = useSettingsStore();
   const { workspacePath } = useWorkspaceStore();
   const activeNote = getActiveNote();
   const content = activeNote?.content || '';
 
-  const renderedText = editorMode === 'plain' ? content : stripMarkdown(content);
+  const renderedText = stripMarkdown(content);
   const chars = renderedText.length;
 
   // Line count logic improved for Markdown
