@@ -10,7 +10,7 @@
 .milkdown .milkdown-block-handle {
     gap: 0px; /* 기본 2px에서 0px로 변경 */
     margin-left: 10px !important;
-    transition: all 0.15s;
+    transition: all 0.1s;
 }
 
 .milkdown .milkdown-block-handle .operation-item {
