@@ -219,6 +219,23 @@
     caret-color: var(--foreground);
 }
 
+/* Use native browser caret instead of Milkdown virtual cursor */
+.milkdown-container .milkdown .ProseMirror.virtual-cursor-enabled {
+    caret-color: var(--foreground) !important;
+}
+
+.milkdown-container .milkdown .ProseMirror .prosemirror-virtual-cursor {
+    display: none !important;
+}
+
+.milkdown-container .milkdown .ProseMirror-focused .prosemirror-virtual-cursor-animation {
+    animation: none !important;
+}
+
+.milkdown-container .milkdown .ProseMirror-gapcursor:after {
+    animation: none !important;
+}
+
 /* Ensure text elements inherit the font size */
 .milkdown-container .milkdown .ProseMirror p,
 .milkdown-container .milkdown .ProseMirror ul,
