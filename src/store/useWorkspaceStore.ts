@@ -94,10 +94,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       saveNote: async (noteId) => {
         const { workspacePath } = get();
-        if (!workspacePath) return;
 
         const note = useNoteStore.getState().notes.find((n) => n.id === noteId);
         if (!note) return;
+
+        if (!workspacePath && !note.filePath) return;
 
         try {
           let filePath = note.filePath;
@@ -105,13 +106,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           // 파일 경로가 없으면 새로 생성
           if (!filePath) {
             // 기존 파일 목록 가져오기
-            const files: FileDetail[] = await window.api.readFolder(workspacePath);
+            const files: FileDetail[] = await window.api.readFolder(workspacePath!);
             const existingFiles = files.map((f) => f.fileName);
 
             // 중복되지 않는 파일명 생성
             const extension = note.extension ?? 'md';
             const fileName = generateFileNameWithExtension(note.title, existingFiles, extension);
-            filePath = joinPath(workspacePath, fileName);
+            filePath = joinPath(workspacePath!, fileName);
 
             // NoteStore에 파일 경로 설정
             useNoteStore.getState().setNoteFilePath(noteId, filePath);

@@ -6,26 +6,40 @@ import MilkdownEditorWrapper, { type MilkdownEditorRef } from '@/components/edit
 import { AIPanel } from '@/components/ai/AIPanel';
 import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useAutosave } from '@/hooks/useAutosave';
+import { useShortcuts } from '@/hooks/useShortcuts';
 import { Toaster } from 'sonner';
 import { toast } from 'sonner';
-import { Sparkles, FilePlus } from 'lucide-react';
+import { FilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 function App() {
-  const { createNote, setActiveNote, updateNote, getActiveNote } = useNoteStore();
+  const { createNote, setActiveNote, updateNote, getActiveNote, openFileNote } = useNoteStore();
   const { isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize, setEditorRef } = useSettingsStore();
-  const { workspacePath, saveNote, saveAllNotes } = useWorkspaceStore();
   const editorRef = useRef<MilkdownEditorRef>(null);
 
   // Autosave 훅 활성화
   useAutosave();
+  useShortcuts();
 
   useEffect(() => {
     setEditorRef(editorRef);
   }, [setEditorRef]);
+
+  useEffect(() => {
+    const unsubscribe = window.api.onOpenFile(async (filePath: string) => {
+      const content = await window.api.readFile(filePath);
+      if (content === null) return;
+      openFileNote(filePath, content);
+      const fileName = filePath.replace(/\\/g, '/').split('/').pop() ?? filePath;
+      toast.success(`Opened ${fileName}`);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [openFileNote]);
 
   useEffect(() => {
     // Initialize if empty
@@ -38,43 +52,7 @@ function App() {
         }
     };
     init();
-
-    // Keyboard shortcuts
-    const handleKeyDown = async (e: KeyboardEvent) => {
-        // Cmd+J or Ctrl+J - AI Panel 토글
-        if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
-            e.preventDefault();
-            toggleAIPanel();
-        }
-
-        // Cmd+S or Ctrl+S - 저장
-        if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-            e.preventDefault();
-
-            if (!workspacePath) {
-                // 폴더가 설정되지 않은 경우 - 폴더 선택 후 전체 저장
-                const folderPath = await window.api.openFolder();
-                if (folderPath) {
-                    useWorkspaceStore.getState().setWorkspacePath(folderPath);
-                    await saveAllNotes();
-                    toast.success('All notes saved to folder');
-                }
-            } else {
-                // 폴더가 설정된 경우 - 현재 노트만 저장
-                const activeNote = getActiveNote();
-                if (activeNote && activeNote.isDirty) {
-                    await saveNote(activeNote.id);
-                    toast.success('Note saved');
-                } else if (activeNote) {
-                    toast.info('No changes to save');
-                }
-            }
-        }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [createNote, setActiveNote, toggleAIPanel, workspacePath, saveNote, saveAllNotes, getActiveNote]);
+  }, [createNote, setActiveNote]);
 
   useEffect(() => {
     document.documentElement.style.fontSize = `${uiFontSize}px`;

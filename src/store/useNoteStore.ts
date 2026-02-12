@@ -21,6 +21,7 @@ interface NoteState {
   notes: Note[];
   activeNoteId: string | null;
   createNote: () => void;
+  openFileNote: (filePath: string, content: string) => void;
   updateNote: (id: string, content: string) => void;
   updateTitle: (id: string, title: string) => void;
   setNoteExtension: (id: string, extension: NoteExtension) => void;
@@ -54,6 +55,54 @@ export const useNoteStore = create<NoteState>()(
           notes: [newNote, ...state.notes],
           activeNoteId: newNote.id,
         }));
+      },
+
+      openFileNote: (filePath, content) => {
+        const normalizedPath = filePath.replace(/\\/g, '/');
+        const fileName = normalizedPath.split('/').pop() || 'Untitled.md';
+        const title = fileName.replace(/\.(md|txt)$/i, '');
+        const extension: NoteExtension = fileName.toLowerCase().endsWith('.txt') ? 'txt' : 'md';
+
+        set((state) => {
+          const existing = state.notes.find((note) => note.filePath === filePath);
+          if (existing) {
+            return {
+              notes: state.notes.map((note) =>
+                note.id === existing.id
+                  ? {
+                      ...note,
+                      title,
+                      content,
+                      updatedAt: Date.now(),
+                      sourceType: 'workspace',
+                      extension,
+                      isDirty: false,
+                      lastSavedContent: content,
+                    }
+                  : note
+              ),
+              activeNoteId: existing.id,
+            };
+          }
+
+          const openedNote: Note = {
+            id: crypto.randomUUID(),
+            title,
+            content,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            filePath,
+            sourceType: 'workspace',
+            extension,
+            isDirty: false,
+            lastSavedContent: content,
+          };
+
+          return {
+            notes: [openedNote, ...state.notes],
+            activeNoteId: openedNote.id,
+          };
+        });
       },
 
       updateNote: (id, content) => {

@@ -9,6 +9,9 @@ import { useSettingsStore } from "@/store/useSettingsStore";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { useShortcutStore, SHORTCUT_DEFINITIONS, type CommandId } from "@/store/useShortcutStore";
+import { eventToShortcut, findShortcutConflict, normalizeShortcut } from "@/lib/shortcuts";
+import { useMemo, useState } from "react";
 
 interface SettingsModalProps {
   children: React.ReactNode;
@@ -16,11 +19,47 @@ interface SettingsModalProps {
 
 export function SettingsModal({ children }: SettingsModalProps) {
   const { theme, toggleTheme, fontSize, setFontSize, uiFontSize, setUiFontSize, pageWidth, setPageWidth, showAIButton, toggleShowAIButton } = useSettingsStore();
+  const { userShortcuts, setShortcut, resetShortcut, resetAllShortcuts, getEffectiveShortcuts } = useShortcutStore();
+  const [capturingCommandId, setCapturingCommandId] = useState<CommandId | null>(null);
+  const [shortcutError, setShortcutError] = useState<string | null>(null);
+
+  const effectiveShortcuts = useMemo(() => getEffectiveShortcuts(), [getEffectiveShortcuts, userShortcuts]);
+
+  const handleShortcutCapture = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    commandId: CommandId
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.key === "Escape") {
+      setCapturingCommandId(null);
+      setShortcutError(null);
+      return;
+    }
+
+    const shortcut = eventToShortcut(event.nativeEvent);
+    if (!shortcut) {
+      setShortcutError("Use at least one modifier key (Cmd/Ctrl/Alt/Shift).");
+      return;
+    }
+
+    const conflictId = findShortcutConflict(commandId, shortcut, effectiveShortcuts);
+    if (conflictId) {
+      const conflictDef = SHORTCUT_DEFINITIONS.find((def) => def.id === conflictId);
+      setShortcutError(`Already used by "${conflictDef?.label ?? conflictId}".`);
+      return;
+    }
+
+    setShortcut(commandId, shortcut);
+    setCapturingCommandId(null);
+    setShortcutError(null);
+  };
 
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
@@ -149,6 +188,65 @@ export function SettingsModal({ children }: SettingsModalProps) {
               checked={showAIButton}
               onCheckedChange={toggleShowAIButton}
             />
+          </div>
+
+          {/* Shortcut Settings */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium">Keyboard Shortcuts</span>
+                <span className="text-xs text-muted-foreground">
+                  Edit shortcuts for common commands
+                </span>
+              </div>
+              <Button variant="outline" size="sm" onClick={resetAllShortcuts}>
+                Reset all
+              </Button>
+            </div>
+
+            <div className="rounded-lg border border-border divide-y divide-border/60 overflow-hidden">
+              {SHORTCUT_DEFINITIONS.map((definition) => {
+                const shortcut = effectiveShortcuts[definition.id];
+                const isOverridden = !!userShortcuts[definition.id];
+                const isCapturing = capturingCommandId === definition.id;
+
+                return (
+                  <div key={definition.id} className="flex items-center justify-between gap-3 p-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{definition.label}</div>
+                      <div className="text-[11px] text-muted-foreground">{definition.category}</div>
+                    </div>
+                    <div className="flex items-center gap-2" data-shortcut-capture="true">
+                      <button
+                        className="min-w-[124px] h-8 px-2 rounded-md border border-border bg-muted/40 text-xs font-mono text-left"
+                        onClick={() => {
+                          setCapturingCommandId(definition.id);
+                          setShortcutError(null);
+                        }}
+                        onKeyDown={(event) => handleShortcutCapture(event, definition.id)}
+                        autoFocus={isCapturing}
+                        title="Click and press shortcut"
+                      >
+                        {isCapturing ? "Press keys..." : normalizeShortcut(shortcut)}
+                      </button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={!isOverridden}
+                        onClick={() => resetShortcut(definition.id)}
+                        className="h-8 px-2 text-xs"
+                      >
+                        Reset
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {shortcutError && (
+              <div className="text-xs text-destructive">{shortcutError}</div>
+            )}
           </div>
         </div>
       </DialogContent>

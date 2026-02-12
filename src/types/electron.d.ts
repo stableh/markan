@@ -21,6 +21,9 @@ export interface ElectronAPI {
 
   // 앱 경로
   getAppPath: (name: string) => Promise<string>;
+
+  // macOS Finder 연동: 연결된 문서를 앱에서 열기
+  onOpenFile: (callback: (filePath: string) => void) => () => void;
 }
 
 declare global {

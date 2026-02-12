@@ -58,6 +58,18 @@
   "build": {
     "appId": "com.markan.app",
     "productName": "Markan",
+    "fileAssociations": [
+      {
+        "ext": "md",
+        "name": "Markdown Document",
+        "role": "Editor"
+      },
+      {
+        "ext": "txt",
+        "name": "Text Document",
+        "role": "Editor"
+      }
+    ],
     "directories": {
       "output": "dist"
     },
@@ -65,6 +77,7 @@
       "out/**/*"
     ],
     "mac": {
+      "category": "public.app-category.productivity",
       "target": "dmg"
     }
   }

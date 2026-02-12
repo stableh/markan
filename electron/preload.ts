@@ -16,6 +16,13 @@ const api = {
 
   // 앱 경로
   getAppPath: (name: string) => ipcRenderer.invoke('app:getPath', name),
+
+  // Finder에서 열기 요청된 파일 경로를 렌더러로 전달
+  onOpenFile: (callback: (filePath: string) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, filePath: string) => callback(filePath)
+    ipcRenderer.on('app:open-file', handler)
+    return () => ipcRenderer.removeListener('app:open-file', handler)
+  },
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

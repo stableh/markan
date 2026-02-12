@@ -4,6 +4,9 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import fs from 'fs/promises'
 import path from 'path'
 
+let mainWindowRef: BrowserWindow | null = null
+const pendingOpenFiles: string[] = []
+
 function getIconPath(): string {
   const iconName = nativeTheme.shouldUseDarkColors
     ? 'logo/dock/logo_black_background.png'
@@ -150,6 +153,7 @@ function createWindow(): void {
 
   // Initial icon set
   updateAppIcon(mainWindow)
+  mainWindowRef = mainWindow
 
   // Listen for theme changes
   nativeTheme.on('updated', () => {
@@ -163,6 +167,14 @@ function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
+  })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (pendingOpenFiles.length === 0) return
+    for (const filePath of pendingOpenFiles) {
+      mainWindow.webContents.send('app:open-file', filePath)
+    }
+    pendingOpenFiles.length = 0
   })
 
   // HMR for renderer base on electron-vite cli.
@@ -201,6 +213,17 @@ app.whenReady().then(() => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+app.on('open-file', (event, filePath) => {
+  event.preventDefault()
+
+  if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+    mainWindowRef.webContents.send('app:open-file', filePath)
+    return
+  }
+
+  pendingOpenFiles.push(filePath)
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common
