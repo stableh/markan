@@ -122,6 +122,10 @@ function setupFileSystemHandlers(): void {
     return app.getPath(name as any)
   })
 
+  ipcMain.handle('app:getVersion', async () => {
+    return app.getVersion()
+  })
+
   // 파일 존재 여부 확인
   ipcMain.handle('fs:exists', async (_, filePath: string) => {
     try {

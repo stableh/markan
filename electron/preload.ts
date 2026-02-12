@@ -16,6 +16,7 @@ const api = {
 
   // 앱 경로
   getAppPath: (name: string) => ipcRenderer.invoke('app:getPath', name),
+  getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
 
   // Finder에서 열기 요청된 파일 경로를 렌더러로 전달
   onOpenFile: (callback: (filePath: string) => void) => {
