@@ -6,6 +6,7 @@ import { editorViewCtx } from '@milkdown/core';
 import '@milkdown/crepe/theme/common/style.css';
 import '@/milkdown-slash-menu.css';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { normalizeForClipboard } from '@/lib/markdown';
 // import { FloatingAI } from './FloatingAI';
 
 export interface MilkdownEditorRef {
@@ -51,6 +52,23 @@ const Editor = ({ initialContent, onChange, readOnly = false, editorRef }: Milkd
 
     return crepe;
   }, []); // Empty dependency array to prevent re-initialization on content change
+
+  useEffect(() => {
+    const container = editorContainerRef.current;
+    if (!container) return;
+
+    const handleCopy = (event: ClipboardEvent) => {
+      const selection = window.getSelection()?.toString() ?? '';
+      if (!selection) return;
+      if (!event.clipboardData) return;
+
+      event.preventDefault();
+      event.clipboardData.setData('text/plain', normalizeForClipboard(selection));
+    };
+
+    container.addEventListener('copy', handleCopy);
+    return () => container.removeEventListener('copy', handleCopy);
+  }, []);
 
   useImperativeHandle(editorRef, () => ({
     focus: () => {

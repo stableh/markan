@@ -4,6 +4,7 @@ import { useNoteStore } from '@/store/useNoteStore';
 import { toast } from 'sonner';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { cn } from '@/lib/utils';
+import { normalizeForClipboard } from '@/lib/markdown';
 
 export function Toolbar() {
   const { isAIPanelOpen, toggleAIPanel, isSidebarOpen, toggleSidebar, showAIButton, editorRef } = useSettingsStore();
@@ -12,7 +13,7 @@ export function Toolbar() {
 
   const handleCopy = () => {
     if (activeNote?.content) {
-      navigator.clipboard.writeText(activeNote.content);
+      navigator.clipboard.writeText(normalizeForClipboard(activeNote.content));
       toast.success('Copied to clipboard');
     }
   };
@@ -69,7 +70,7 @@ export function Toolbar() {
         <button
           onClick={handleCopy}
           className="w-8 h-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          title="Copy Markdown"
+          title="Copy"
         >
           <Copy size={16} />
         </button>

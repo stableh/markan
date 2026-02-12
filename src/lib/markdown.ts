@@ -17,3 +17,10 @@ export const stripMarkdown = (markdown: string) => {
 
   return text;
 };
+
+export const normalizeForClipboard = (markdown: string) => {
+  return markdown
+    .replace(/\r\n/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/\n{2,}/g, '\n');
+};
