@@ -3,6 +3,7 @@ import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/re
 import { Crepe } from '@milkdown/crepe';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { editorViewCtx } from '@milkdown/core';
+import { Selection } from '@milkdown/prose/state';
 import '@milkdown/crepe/theme/common/style.css';
 import '@/milkdown-slash-menu.css';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -11,6 +12,7 @@ import { normalizeForClipboard } from '@/lib/markdown';
 
 export interface MilkdownEditorRef {
   focus: () => void;
+  focusToEnd: () => void;
 }
 
 interface MilkdownEditorProps {
@@ -79,7 +81,18 @@ const Editor = ({ initialContent, onChange, readOnly = false, editorRef }: Milkd
           view.focus();
         });
       }
-    }
+    },
+    focusToEnd: () => {
+      const editor = getInstance();
+      if (editor) {
+        editor.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const selection = Selection.atEnd(view.state.doc);
+          view.dispatch(view.state.tr.setSelection(selection).scrollIntoView());
+          view.focus();
+        });
+      }
+    },
   }), [getInstance]);
 
   return (
@@ -94,16 +107,30 @@ const MilkdownEditorWrapper = forwardRef<MilkdownEditorRef, MilkdownEditorProps>
     const { fontSize, pageWidth } = useSettingsStore();
     const internalRef = useRef<MilkdownEditorRef>(null);
     const editorRef = (ref as React.RefObject<MilkdownEditorRef>) || internalRef;
+    const isReadOnly = props.readOnly ?? false;
+
+    const handleContainerMouseDownCapture = (event: React.MouseEvent<HTMLDivElement>) => {
+      if (isReadOnly) return;
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      if (target.closest('.ProseMirror')) return;
+      if (target.closest('button, a, input, textarea, select, [role="button"], [role="menuitem"]')) return;
+
+      event.preventDefault();
+      editorRef.current?.focusToEnd();
+    };
 
     return (
       <MilkdownProvider>
         <div
           className="h-full w-full overflow-y-auto milkdown-container relative"
+          onMouseDownCapture={handleContainerMouseDownCapture}
           style={{
             '--editor-font-size': `${fontSize}px`,
           } as React.CSSProperties}
         >
-          <div className={pageWidth === 'narrow' ? 'max-w-6xl mx-auto bg-background' : 'w-full'}>
+          <div className={pageWidth === 'narrow' ? 'max-w-6xl min-h-full mx-auto bg-background' : 'w-full min-h-full'}>
             <div style={{ fontSize: `${fontSize}px` }}>
               <Editor {...props} editorRef={editorRef} />
             </div>
