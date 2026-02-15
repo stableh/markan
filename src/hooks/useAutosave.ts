@@ -1,25 +1,31 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNoteStore } from '@/store/useNoteStore';
-import { sanitizeFileName } from '@/lib/fileUtils';
+import { joinPath } from '@/lib/fileUtils';
 
 const AUTOSAVE_INTERVAL = 10000; // 10초
 
 export function useAutosave() {
   const notes = useNoteStore((state) => state.notes);
+  const notesRef = useRef(notes);
+
+  useEffect(() => {
+    notesRef.current = notes;
+  }, [notes]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         // autosave 폴더 경로 가져오기
         const userDataPath = await window.api.getAppPath('userData');
-        const autosaveFolder = `${userDataPath}/autosave`;
+        const autosaveFolder = joinPath(userDataPath, 'autosave');
 
         // dirty한 노트만 autosave
-        const dirtyNotes = notes.filter((note) => note.isDirty);
+        const dirtyNotes = notesRef.current.filter((note) => note.isDirty);
 
         for (const note of dirtyNotes) {
-          const fileName = sanitizeFileName(note.title) || `Untitled-${note.id.slice(0, 8)}`;
-          const filePath = `${autosaveFolder}/${fileName}.md`;
+          const extension = note.extension === 'txt' ? 'txt' : 'md';
+          const fileName = `note-${note.id}.${extension}`;
+          const filePath = joinPath(autosaveFolder, fileName);
 
           await window.api.writeFile(filePath, note.content);
         }
@@ -33,5 +39,5 @@ export function useAutosave() {
     }, AUTOSAVE_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [notes]);
+  }, []);
 }

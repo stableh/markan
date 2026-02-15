@@ -23,6 +23,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       isWorkspaceMode: false,
 
       setWorkspacePath: (path) => {
+        void window.api.setWorkspacePath(path).catch((error) => {
+          console.error('Failed to sync workspace path:', error);
+        });
         set({
           workspacePath: path,
           isWorkspaceMode: !!path,
@@ -70,6 +73,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           }
 
           // 워크스페이스 경로 설정
+          void window.api.setWorkspacePath(path).catch((error) => {
+            console.error('Failed to sync workspace path:', error);
+          });
           set({
             workspacePath: path,
             isWorkspaceMode: true,

@@ -22,8 +22,7 @@ interface MilkdownEditorProps {
 }
 
 const Editor = ({ initialContent, onChange, readOnly = false, editorRef }: MilkdownEditorProps & { editorRef?: React.RefObject<MilkdownEditorRef> }) => {
-  const { theme } = useSettingsStore();
-  const [loading, getInstance] = useInstance();
+  const [, getInstance] = useInstance();
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
   useEditor((root) => {

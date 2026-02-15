@@ -5,6 +5,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 const api = {
   // 폴더 다이얼로그
   openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
+  setWorkspacePath: (path: string | null) => ipcRenderer.invoke('workspace:setPath', path),
 
   // 파일 시스템
   readFolder: (path: string) => ipcRenderer.invoke('fs:readFolder', path),
@@ -37,8 +38,8 @@ if (process.contextIsolated) {
     console.error(error)
   }
 } else {
-  // @ts-ignore (define in dts)
+  // @ts-expect-error (define in dts)
   window.electron = electronAPI
-  // @ts-ignore (define in dts)
+  // @ts-expect-error (define in dts)
   window.api = api
 }

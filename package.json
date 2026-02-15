@@ -78,7 +78,8 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "public/logo/dock/logo_black_background.png"
     }
   }
 }

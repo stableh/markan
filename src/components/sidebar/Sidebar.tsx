@@ -11,6 +11,7 @@ export function Sidebar() {
   const { theme } = useSettingsStore();
   const { openFolder, workspacePath } = useWorkspaceStore();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const assetBase = import.meta.env.BASE_URL;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -40,7 +41,7 @@ export function Sidebar() {
       .replace(/!\[.*?\]\(.*?\)/g, '')
       .replace(/\[(.*?)\]\(.*?\)/g, '$1')
       .replace(/<[^>]*>/g, '')
-      .replace(/[#*`_~>\-]/g, '')
+      .replace(/[#*`_~>-]/g, '')
       .replace(/\n/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
@@ -185,7 +186,9 @@ export function Sidebar() {
         {/* Left: Logo */}
         <div className="flex items-center select-none z-10 pl-0.5">
           <img
-            src={theme === 'dark' ? "/logo/logo_dark_background.png" : "/logo/logo_white_background.png"}
+            src={theme === 'dark'
+              ? `${assetBase}logo/logo_dark_background.png`
+              : `${assetBase}logo/logo_white_background.png`}
             alt="MarkAn Logo"
             className="w-10 h-10 object-contain"
           />

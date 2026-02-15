@@ -10,7 +10,8 @@ export interface FileDetail {
 
 export interface ElectronAPI {
   // 폴더 다이얼로그
-  openFolder: () => Promise<string>;
+  openFolder: () => Promise<string | null>;
+  setWorkspacePath: (path: string | null) => Promise<boolean>;
 
   // 파일 시스템
   readFolder: (path: string) => Promise<FileDetail[]>;

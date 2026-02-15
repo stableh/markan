@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, Bot, User, X, History, Wand2, FileText, AlignLeft, PenLine, Calendar } from 'lucide-react';
-import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { cn } from '@/lib/utils';
 
@@ -13,7 +12,6 @@ export function AIPanel() {
     actions?: { label: string, onClick: () => void }[]
   }[]>([]);
   
-  const { getActiveNote } = useNoteStore();
   const { toggleAIPanel } = useSettingsStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,7 +31,6 @@ export function AIPanel() {
   const handleSend = (text: string = input) => {
     if (!text.trim() || isLoading) return;
     
-    const note = getActiveNote();
     const userMessage = text.trim();
     
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);

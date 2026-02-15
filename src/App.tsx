@@ -6,6 +6,7 @@ import MilkdownEditorWrapper, { type MilkdownEditorRef } from '@/components/edit
 import { AIPanel } from '@/components/ai/AIPanel';
 import { useNoteStore } from '@/store/useNoteStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useAutosave } from '@/hooks/useAutosave';
 import { useShortcuts } from '@/hooks/useShortcuts';
 import { Toaster } from 'sonner';
@@ -16,7 +17,8 @@ import { Button } from '@/components/ui/button';
 
 function App() {
   const { createNote, setActiveNote, updateNote, getActiveNote, openFileNote } = useNoteStore();
-  const { isAIPanelOpen, toggleAIPanel, isSidebarOpen, uiFontSize, setEditorRef } = useSettingsStore();
+  const { isAIPanelOpen, isSidebarOpen, uiFontSize, setEditorRef } = useSettingsStore();
+  const workspacePath = useWorkspaceStore((state) => state.workspacePath);
   const editorRef = useRef<MilkdownEditorRef>(null);
 
   // Autosave 훅 활성화
@@ -57,6 +59,12 @@ function App() {
   useEffect(() => {
     document.documentElement.style.fontSize = `${uiFontSize}px`;
   }, [uiFontSize]);
+
+  useEffect(() => {
+    void window.api.setWorkspacePath(workspacePath).catch((error) => {
+      console.error('Failed to sync workspace path on startup:', error);
+    });
+  }, [workspacePath]);
 
   const activeNote = getActiveNote();
 

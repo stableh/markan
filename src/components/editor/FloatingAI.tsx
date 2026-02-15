@@ -76,7 +76,7 @@ export const FloatingAI = () => {
             setPosition({ top, left });
             setVisible(true);
 
-        } catch (e) {
+        } catch {
             // Ignore errors during initialization
         }
     };
@@ -120,7 +120,7 @@ export const FloatingAI = () => {
             
             setCandidates(mockCandidates);
             setInput('');
-          } catch (e) {
+          } catch {
               toast.error('Failed to generate options');
           } finally {
               setIsProcessing(false);
@@ -144,7 +144,7 @@ export const FloatingAI = () => {
         toast.success('Applied successfully');
         setVisible(false);
         setCandidates([]);
-      } catch (e) {
+      } catch {
           toast.error('Failed to apply changes');
       }
   };

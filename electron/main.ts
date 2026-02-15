@@ -6,6 +6,28 @@ import path from 'path'
 
 let mainWindowRef: BrowserWindow | null = null
 const pendingOpenFiles: string[] = []
+let currentWorkspacePath: string | null = null
+const allowedExternalFiles = new Set<string>()
+
+function normalizePath(inputPath: string): string {
+  return path.resolve(inputPath)
+}
+
+function isPathInside(targetPath: string, basePath: string): boolean {
+  const relative = path.relative(basePath, targetPath)
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
+}
+
+function isAllowedPath(targetPath: string): boolean {
+  const resolvedTarget = normalizePath(targetPath)
+  const userDataPath = normalizePath(app.getPath('userData'))
+
+  if (isPathInside(resolvedTarget, userDataPath)) return true
+  if (currentWorkspacePath && isPathInside(resolvedTarget, currentWorkspacePath)) return true
+  if (allowedExternalFiles.has(resolvedTarget)) return true
+
+  return false
+}
 
 function getIconPath(): string {
   const iconName = nativeTheme.shouldUseDarkColors
@@ -38,13 +60,41 @@ function setupFileSystemHandlers(): void {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory']
     })
-    return result.filePaths[0]
+    const selectedPath = result.filePaths[0]
+    if (!selectedPath) return null
+
+    currentWorkspacePath = normalizePath(selectedPath)
+    return currentWorkspacePath
+  })
+
+  ipcMain.handle('workspace:setPath', async (_, workspacePath: string | null) => {
+    if (!workspacePath) {
+      currentWorkspacePath = null
+      return true
+    }
+
+    try {
+      const resolvedPath = normalizePath(workspacePath)
+      const stats = await fs.stat(resolvedPath)
+      if (!stats.isDirectory()) return false
+      currentWorkspacePath = resolvedPath
+      return true
+    } catch (error) {
+      console.error('Failed to set workspace path:', error)
+      return false
+    }
   })
 
   // 폴더 내 .md 파일 읽기
   ipcMain.handle('fs:readFolder', async (_, folderPath: string) => {
     try {
-      const files = await fs.readdir(folderPath)
+      const resolvedFolder = normalizePath(folderPath)
+      if (!isAllowedPath(resolvedFolder)) {
+        console.warn('Blocked unauthorized folder read:', folderPath)
+        return []
+      }
+
+      const files = await fs.readdir(resolvedFolder)
       const noteFiles = files.filter((f) => {
         const ext = path.extname(f).toLowerCase()
         return ext === '.md' || ext === '.txt'
@@ -52,7 +102,7 @@ function setupFileSystemHandlers(): void {
 
       const fileDetails = await Promise.all(
         noteFiles.map(async (file) => {
-          const filePath = path.join(folderPath, file)
+          const filePath = path.join(resolvedFolder, file)
           const stats = await fs.stat(filePath)
           const content = await fs.readFile(filePath, 'utf-8')
           const extension = path.extname(file).toLowerCase() === '.txt' ? 'txt' : 'md'
@@ -83,7 +133,13 @@ function setupFileSystemHandlers(): void {
   // 파일 읽기
   ipcMain.handle('fs:readFile', async (_, filePath: string) => {
     try {
-      const content = await fs.readFile(filePath, 'utf-8')
+      const resolvedPath = normalizePath(filePath)
+      if (!isAllowedPath(resolvedPath)) {
+        console.warn('Blocked unauthorized file read:', filePath)
+        return null
+      }
+
+      const content = await fs.readFile(resolvedPath, 'utf-8')
       return content
     } catch (error) {
       console.error('Error reading file:', error)
@@ -94,11 +150,17 @@ function setupFileSystemHandlers(): void {
   // 파일 저장
   ipcMain.handle('fs:writeFile', async (_, filePath: string, content: string) => {
     try {
+      const resolvedPath = normalizePath(filePath)
+      if (!isAllowedPath(resolvedPath)) {
+        console.warn('Blocked unauthorized file write:', filePath)
+        return false
+      }
+
       // 디렉토리가 없으면 생성
-      const dir = path.dirname(filePath)
+      const dir = path.dirname(resolvedPath)
       await fs.mkdir(dir, { recursive: true })
 
-      await fs.writeFile(filePath, content, 'utf-8')
+      await fs.writeFile(resolvedPath, content, 'utf-8')
       return true
     } catch (error) {
       console.error('Error writing file:', error)
@@ -109,7 +171,13 @@ function setupFileSystemHandlers(): void {
   // 파일 삭제
   ipcMain.handle('fs:deleteFile', async (_, filePath: string) => {
     try {
-      await fs.unlink(filePath)
+      const resolvedPath = normalizePath(filePath)
+      if (!isAllowedPath(resolvedPath)) {
+        console.warn('Blocked unauthorized file delete:', filePath)
+        return false
+      }
+
+      await fs.unlink(resolvedPath)
       return true
     } catch (error) {
       console.error('Error deleting file:', error)
@@ -119,7 +187,7 @@ function setupFileSystemHandlers(): void {
 
   // 앱 데이터 경로
   ipcMain.handle('app:getPath', async (_, name: string) => {
-    return app.getPath(name as any)
+    return app.getPath(name as Parameters<typeof app.getPath>[0])
   })
 
   ipcMain.handle('app:getVersion', async () => {
@@ -129,7 +197,13 @@ function setupFileSystemHandlers(): void {
   // 파일 존재 여부 확인
   ipcMain.handle('fs:exists', async (_, filePath: string) => {
     try {
-      await fs.access(filePath)
+      const resolvedPath = normalizePath(filePath)
+      if (!isAllowedPath(resolvedPath)) {
+        console.warn('Blocked unauthorized file exists check:', filePath)
+        return false
+      }
+
+      await fs.access(resolvedPath)
       return true
     } catch {
       return false
@@ -221,13 +295,15 @@ app.whenReady().then(() => {
 
 app.on('open-file', (event, filePath) => {
   event.preventDefault()
+  const normalizedPath = normalizePath(filePath)
+  allowedExternalFiles.add(normalizedPath)
 
   if (mainWindowRef && !mainWindowRef.isDestroyed()) {
-    mainWindowRef.webContents.send('app:open-file', filePath)
+    mainWindowRef.webContents.send('app:open-file', normalizedPath)
     return
   }
 
-  pendingOpenFiles.push(filePath)
+  pendingOpenFiles.push(normalizedPath)
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

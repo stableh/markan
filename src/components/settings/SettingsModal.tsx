@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useShortcutStore, SHORTCUT_DEFINITIONS, type CommandId } from "@/store/useShortcutStore";
 import { eventToShortcut, findShortcutConflict, normalizeShortcut } from "@/lib/shortcuts";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface SettingsModalProps {
   children: React.ReactNode;
@@ -22,7 +22,7 @@ function ShortcutSettingsDialog() {
   const [capturingCommandId, setCapturingCommandId] = useState<CommandId | null>(null);
   const [shortcutError, setShortcutError] = useState<string | null>(null);
 
-  const effectiveShortcuts = useMemo(() => getEffectiveShortcuts(), [getEffectiveShortcuts, userShortcuts]);
+  const effectiveShortcuts = getEffectiveShortcuts();
 
   const handleShortcutCapture = (
     event: React.KeyboardEvent<HTMLButtonElement>,
