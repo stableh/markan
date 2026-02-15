@@ -20,6 +20,7 @@ function App() {
   const { isAIPanelOpen, isSidebarOpen, uiFontSize, setEditorRef } = useSettingsStore();
   const workspacePath = useWorkspaceStore((state) => state.workspacePath);
   const editorRef = useRef<MilkdownEditorRef>(null);
+  const lastUpdateStatusRef = useRef<string>('');
 
   // Autosave 훅 활성화
   useAutosave();
@@ -65,6 +66,32 @@ function App() {
       console.error('Failed to sync workspace path on startup:', error);
     });
   }, [workspacePath]);
+
+  useEffect(() => {
+    const unsubscribe = window.api.onUpdateStatus((status) => {
+      const signature = `${status.status}:${status.message}`;
+      if (lastUpdateStatusRef.current === signature) return;
+      lastUpdateStatusRef.current = signature;
+
+      if (status.status === 'available') {
+        toast.info(status.message);
+        return;
+      }
+      if (status.status === 'downloaded') {
+        toast.success(status.message);
+        return;
+      }
+      if (status.status === 'error') {
+        toast.error(status.message);
+        return;
+      }
+      if (status.status === 'unavailable') {
+        toast.message(status.message);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const activeNote = getActiveNote();
 

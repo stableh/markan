@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, nativeTheme, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { createRequire } from 'module'
 import fs from 'fs/promises'
 import path from 'path'
 
@@ -8,6 +9,95 @@ let mainWindowRef: BrowserWindow | null = null
 const pendingOpenFiles: string[] = []
 let currentWorkspacePath: string | null = null
 const allowedExternalFiles = new Set<string>()
+const require = createRequire(import.meta.url)
+
+type UpdateStatus =
+  | { status: 'unavailable'; message: string }
+  | { status: 'checking'; message: string }
+  | { status: 'up-to-date'; message: string }
+  | { status: 'available'; message: string; version: string }
+  | { status: 'downloaded'; message: string; version: string }
+  | { status: 'error'; message: string }
+
+type AutoUpdaterLike = {
+  autoDownload: boolean
+  checkForUpdates: () => Promise<unknown>
+  downloadUpdate: () => Promise<unknown>
+  quitAndInstall: () => void
+  on: (event: string, listener: (...args: unknown[]) => void) => void
+}
+
+let autoUpdaterRef: AutoUpdaterLike | null = null
+let updaterInitialized = false
+let latestUpdateStatus: UpdateStatus = { status: 'unavailable', message: 'Updater is not initialized.' }
+
+function emitUpdateStatus(payload: UpdateStatus) {
+  latestUpdateStatus = payload
+  if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+    mainWindowRef.webContents.send('app:update-status', payload)
+  }
+}
+
+function getAutoUpdater(): AutoUpdaterLike | null {
+  if (updaterInitialized) return autoUpdaterRef
+  updaterInitialized = true
+
+  try {
+    const updaterModule = require('electron-updater') as { autoUpdater?: AutoUpdaterLike }
+    if (!updaterModule.autoUpdater) {
+      emitUpdateStatus({ status: 'unavailable', message: 'Updater module loaded without autoUpdater.' })
+      return null
+    }
+
+    autoUpdaterRef = updaterModule.autoUpdater
+    autoUpdaterRef.autoDownload = false
+
+    autoUpdaterRef.on('checking-for-update', () => {
+      emitUpdateStatus({ status: 'checking', message: 'Checking for updates...' })
+    })
+
+    autoUpdaterRef.on('update-not-available', () => {
+      emitUpdateStatus({ status: 'up-to-date', message: 'You are using the latest version.' })
+    })
+
+    autoUpdaterRef.on('update-available', (info: unknown) => {
+      const version =
+        typeof info === 'object' && info !== null && 'version' in info
+          ? String((info as { version?: string }).version ?? '')
+          : ''
+      emitUpdateStatus({
+        status: 'available',
+        message: version ? `Version ${version} is available.` : 'A new version is available.',
+        version: version || 'latest',
+      })
+    })
+
+    autoUpdaterRef.on('update-downloaded', (info: unknown) => {
+      const version =
+        typeof info === 'object' && info !== null && 'version' in info
+          ? String((info as { version?: string }).version ?? '')
+          : ''
+      emitUpdateStatus({
+        status: 'downloaded',
+        message: 'Update downloaded. Restart the app to apply.',
+        version: version || 'latest',
+      })
+    })
+
+    autoUpdaterRef.on('error', (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Update check failed.'
+      emitUpdateStatus({ status: 'error', message })
+    })
+
+    return autoUpdaterRef
+  } catch {
+    emitUpdateStatus({
+      status: 'unavailable',
+      message: 'Updater is not bundled. Install electron-updater and configure a publish provider.',
+    })
+    return null
+  }
+}
 
 function normalizePath(inputPath: string): string {
   return path.resolve(inputPath)
@@ -194,6 +284,45 @@ function setupFileSystemHandlers(): void {
     return app.getVersion()
   })
 
+  ipcMain.handle('app:checkForUpdates', async () => {
+    const updater = getAutoUpdater()
+    if (!updater) return latestUpdateStatus
+
+    try {
+      await updater.checkForUpdates()
+      return latestUpdateStatus
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to check for updates.'
+      const payload: UpdateStatus = { status: 'error', message }
+      emitUpdateStatus(payload)
+      return payload
+    }
+  })
+
+  ipcMain.handle('app:downloadUpdate', async () => {
+    const updater = getAutoUpdater()
+    if (!updater) return latestUpdateStatus
+
+    try {
+      await updater.downloadUpdate()
+      return latestUpdateStatus
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to download update.'
+      const payload: UpdateStatus = { status: 'error', message }
+      emitUpdateStatus(payload)
+      return payload
+    }
+  })
+
+  ipcMain.handle('app:quitAndInstallUpdate', async () => {
+    const updater = getAutoUpdater()
+    if (!updater) return false
+    updater.quitAndInstall()
+    return true
+  })
+
+  ipcMain.handle('app:getUpdateStatus', async () => latestUpdateStatus)
+
   // 파일 존재 여부 확인
   ipcMain.handle('fs:exists', async (_, filePath: string) => {
     try {
@@ -278,13 +407,21 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
-
   // File system IPC handlers
   setupFileSystemHandlers()
 
   createWindow()
+  getAutoUpdater()
+
+  // Run a background check shortly after startup to surface update notifications.
+  setTimeout(() => {
+    const updater = getAutoUpdater()
+    if (!updater) return
+    void updater.checkForUpdates().catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Background update check failed.'
+      emitUpdateStatus({ status: 'error', message })
+    })
+  }, 5000)
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

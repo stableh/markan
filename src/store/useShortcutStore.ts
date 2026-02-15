@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { normalizeShortcut, resolvePlatformShortcut } from '@/lib/shortcuts';
 
 export type CommandId =
+  | 'file.open-folder'
   | 'file.save'
   | 'note.new'
   | 'panel.ai.toggle'
@@ -16,6 +17,7 @@ interface ShortcutDefinition {
 }
 
 export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
+  { id: 'file.open-folder', category: 'File', label: 'Open folder', defaultShortcut: 'CmdOrCtrl+O' },
   { id: 'file.save', category: 'File', label: 'Save note', defaultShortcut: 'CmdOrCtrl+S' },
   { id: 'note.new', category: 'Note', label: 'Create new note', defaultShortcut: 'CmdOrCtrl+N' },
   { id: 'panel.ai.toggle', category: 'Panel', label: 'Toggle AI panel', defaultShortcut: 'CmdOrCtrl+J' },

@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useShortcutStore, SHORTCUT_DEFINITIONS, type CommandId } from "@/store/useShortcutStore";
 import { eventToShortcut, findShortcutConflict, normalizeShortcut } from "@/lib/shortcuts";
 import { useEffect, useState } from "react";
+import type { UpdateStatus } from "@/types/electron";
 
 interface SettingsModalProps {
   children: React.ReactNode;
@@ -123,16 +124,71 @@ function ShortcutSettingsDialog() {
 export function SettingsModal({ children }: SettingsModalProps) {
   const { theme, toggleTheme, fontSize, setFontSize, uiFontSize, setUiFontSize, pageWidth, setPageWidth, showAIButton, toggleShowAIButton } = useSettingsStore();
   const [appVersion, setAppVersion] = useState("...");
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({
+    status: 'up-to-date',
+    message: 'Update status is idle.',
+  });
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     void window.api.getAppVersion().then((version) => {
       if (mounted) setAppVersion(version);
     });
+    void window.api.getUpdateStatus().then((status) => {
+      if (mounted) setUpdateStatus(status);
+    });
+    const unsubscribeUpdate = window.api.onUpdateStatus((status) => {
+      if (mounted) setUpdateStatus(status);
+    });
     return () => {
       mounted = false;
+      unsubscribeUpdate();
     };
   }, []);
+
+  const handleCheckUpdates = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const status = await window.api.checkForUpdates();
+      setUpdateStatus(status);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  const handleDownloadUpdate = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const status = await window.api.downloadUpdate();
+      setUpdateStatus(status);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
+  const handleQuitAndInstall = async () => {
+    await window.api.quitAndInstallUpdate();
+  };
+
+  const getUpdateActionLabel = () => {
+    if (isCheckingUpdate || updateStatus.status === 'checking') return 'Checking...';
+    if (updateStatus.status === 'available') return 'Download update';
+    if (updateStatus.status === 'downloaded') return 'Restart to update';
+    return 'Check updates';
+  };
+
+  const handleUpdateAction = () => {
+    if (updateStatus.status === 'available') {
+      void handleDownloadUpdate();
+      return;
+    }
+    if (updateStatus.status === 'downloaded') {
+      void handleQuitAndInstall();
+      return;
+    }
+    void handleCheckUpdates();
+  };
 
   return (
     <Dialog>
@@ -287,11 +343,12 @@ export function SettingsModal({ children }: SettingsModalProps) {
             </div>
             <button
               type="button"
-              onClick={() => {}}
-              title="Check for updates (coming soon)"
+              onClick={handleUpdateAction}
+              title={updateStatus.message}
+              disabled={isCheckingUpdate || updateStatus.status === 'checking'}
               className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2 shrink-0"
             >
-              Check updates
+              {getUpdateActionLabel()}
             </button>
           </div>
         </div>

@@ -393,3 +393,8 @@ sketch
 # https://plugins.jetbrains.com/plugin/8053-azure-toolkit-for-intellij
 
 # End of https://www.toptal.com/developers/gitignore/api/react,node,macos,jetbrains,webstorm,git
+
+# Local tool configs and build/cache outputs
+.mcp.json
+.vite/
+dist/

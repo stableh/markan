@@ -30,6 +30,10 @@ const saveActiveNote = async () => {
   toast.info('No changes to save');
 };
 
+const openFolder = async () => {
+  await useWorkspaceStore.getState().openFolder();
+};
+
 const createNewNote = () => {
   useNoteStore.getState().createNote();
 };
@@ -43,6 +47,7 @@ const toggleSidebar = () => {
 };
 
 const COMMAND_HANDLERS: Record<CommandId, () => void | Promise<void>> = {
+  'file.open-folder': openFolder,
   'file.save': saveActiveNote,
   'note.new': createNewNote,
   'panel.ai.toggle': toggleAiPanel,

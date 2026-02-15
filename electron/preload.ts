@@ -1,6 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
+export type UpdateStatus =
+  | { status: 'unavailable'; message: string }
+  | { status: 'checking'; message: string }
+  | { status: 'up-to-date'; message: string }
+  | { status: 'available'; message: string; version: string }
+  | { status: 'downloaded'; message: string; version: string }
+  | { status: 'error'; message: string }
+
 // Custom APIs for renderer
 const api = {
   // 폴더 다이얼로그
@@ -18,6 +26,15 @@ const api = {
   // 앱 경로
   getAppPath: (name: string) => ipcRenderer.invoke('app:getPath', name),
   getAppVersion: () => ipcRenderer.invoke('app:getVersion'),
+  checkForUpdates: () => ipcRenderer.invoke('app:checkForUpdates') as Promise<UpdateStatus>,
+  downloadUpdate: () => ipcRenderer.invoke('app:downloadUpdate') as Promise<UpdateStatus>,
+  quitAndInstallUpdate: () => ipcRenderer.invoke('app:quitAndInstallUpdate') as Promise<boolean>,
+  getUpdateStatus: () => ipcRenderer.invoke('app:getUpdateStatus') as Promise<UpdateStatus>,
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
+    const handler = (_: Electron.IpcRendererEvent, status: UpdateStatus) => callback(status)
+    ipcRenderer.on('app:update-status', handler)
+    return () => ipcRenderer.removeListener('app:update-status', handler)
+  },
 
   // Finder에서 열기 요청된 파일 경로를 렌더러로 전달
   onOpenFile: (callback: (filePath: string) => void) => {
