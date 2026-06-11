@@ -28,9 +28,27 @@ export type OpenImageResult =
       data: Uint8Array
     }
 
+export type ClipboardPayload =
+  | {
+      kind: 'empty'
+    }
+  | {
+      kind: 'text'
+      text: string
+    }
+  | {
+      kind: 'image'
+      fileName: string
+      mimeType: 'image/png'
+      data: Uint8Array
+      naturalWidth: number
+      naturalHeight: number
+    }
+
 export type PdfanBridge = {
   openPdf: () => Promise<OpenPdfResult>
   openImage: () => Promise<OpenImageResult>
+  readClipboard: () => Promise<ClipboardPayload>
   savePdf: (request: SavePdfBridgeRequest) => Promise<SaveBridgeResult>
   confirmUnsaved: () => Promise<'save' | 'discard' | 'cancel'>
   showErrorDialog: (title: string, message: string) => Promise<void>
@@ -43,6 +61,7 @@ export type PdfanBridge = {
 const bridge: PdfanBridge = {
   openPdf: () => ipcRenderer.invoke(IPC_CHANNELS.openPdf),
   openImage: () => ipcRenderer.invoke(IPC_CHANNELS.openImage),
+  readClipboard: () => ipcRenderer.invoke(IPC_CHANNELS.readClipboard),
   savePdf: (request) => ipcRenderer.invoke(IPC_CHANNELS.savePdf, request),
   confirmUnsaved: () => ipcRenderer.invoke(IPC_CHANNELS.confirmUnsaved),
   showErrorDialog: (title, message) => ipcRenderer.invoke(IPC_CHANNELS.showErrorDialog, { title, message }),

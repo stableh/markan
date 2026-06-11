@@ -46,6 +46,8 @@ describe('ToolController', () => {
   it('routes final view, save, page, and undo shortcuts', () => {
     expect(resolveKeyboardCommand({ key: 'o', metaKey: true })).toBe('open')
     expect(resolveKeyboardCommand({ key: 'o', metaKey: true, ctrlKey: true })).toBe('ellipse')
+    expect(resolveKeyboardCommand({ key: 'v', metaKey: true })).toBe('paste')
+    expect(resolveKeyboardCommand({ key: 'v', metaKey: true, ctrlKey: true })).toBe('select')
     expect(resolveKeyboardCommand({ key: 's', metaKey: true })).toBe('save')
     expect(resolveKeyboardCommand({ key: 's', metaKey: true, shiftKey: true })).toBe('save-as')
     expect(resolveKeyboardCommand({ key: '+', metaKey: true })).toBe('zoom-in')

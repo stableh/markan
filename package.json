@@ -8,12 +8,14 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "tsc -b && electron-vite build",
+    "build:mac": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --config electron-builder.yml",
     "lint": "eslint .",
     "preview": "electron-vite preview",
     "test": "vitest run"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
+    "@tanstack/react-virtual": "^3.14.2",
     "@tiptap/extension-color": "^3.26.0",
     "@tiptap/extension-text-align": "^3.26.0",
     "@tiptap/extension-text-style": "^3.26.0",
@@ -44,6 +46,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "electron": "^42.4.0",
+    "electron-builder": "^26.15.2",
     "electron-vite": "^5.0.0",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^7.0.1",

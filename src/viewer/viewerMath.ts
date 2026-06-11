@@ -1,7 +1,8 @@
 export const MIN_ZOOM = 0.25
 export const MAX_ZOOM = 4
 export const ZOOM_STEP = 0.1
-export const VIEWER_PADDING = 80
+export const VIEWER_HORIZONTAL_PADDING = 80
+export const FIT_PAGE_VERTICAL_CHROME = 96
 
 export type ZoomDirection = 'in' | 'out'
 
@@ -43,7 +44,7 @@ export const resolveFitWidthScale = ({ containerWidth, pageWidth }: FitWidthInpu
     return 1
   }
 
-  return clampZoom((containerWidth - VIEWER_PADDING) / pageWidth)
+  return clampZoom((containerWidth - VIEWER_HORIZONTAL_PADDING) / pageWidth)
 }
 
 export const resolveFitPageScale = ({
@@ -56,8 +57,8 @@ export const resolveFitPageScale = ({
     return 1
   }
 
-  const widthScale = (containerWidth - VIEWER_PADDING) / pageWidth
-  const heightScale = (containerHeight - VIEWER_PADDING) / pageHeight
+  const widthScale = (containerWidth - VIEWER_HORIZONTAL_PADDING) / pageWidth
+  const heightScale = (containerHeight - FIT_PAGE_VERTICAL_CHROME) / pageHeight
   return clampZoom(Math.min(widthScale, heightScale))
 }
 

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { clampPageNumber, getPageNumberForNavigation } from './viewMode'
+import { DEFAULT_PAGE_VIEW_MODE, clampPageNumber, getPageNumberForNavigation } from './viewMode'
 
 describe('viewMode', () => {
+  it('uses single page as the default viewer mode', () => {
+    expect(DEFAULT_PAGE_VIEW_MODE).toBe('single')
+  })
+
   it('clamps page numbers to the current document range', () => {
     expect(clampPageNumber(-10, 5)).toBe(1)
     expect(clampPageNumber(3, 5)).toBe(3)

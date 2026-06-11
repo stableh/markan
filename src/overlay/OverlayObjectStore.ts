@@ -87,7 +87,7 @@ export const defaultTextOverlayStyle: TextOverlayStyle = {
   textColor: '#111827',
   backgroundColor: 'transparent',
   borderColor: 'transparent',
-  padding: 8,
+  padding: 0,
   textAlign: 'left',
   letterSpacing: 0,
   lineHeight: 1.4,
@@ -121,7 +121,36 @@ const createId = () => {
   return `overlay-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+const createUniqueId = (objects: OverlayObject[]) => {
+  const existingIds = new Set(objects.map((object) => object.id))
+  const baseId = createId()
+
+  if (!existingIds.has(baseId)) {
+    return baseId
+  }
+
+  let suffix = 1
+  let candidate = `${baseId}-${suffix}`
+
+  while (existingIds.has(candidate)) {
+    suffix += 1
+    candidate = `${baseId}-${suffix}`
+  }
+
+  return candidate
+}
+
 const createTimestamp = () => new Date().toISOString()
+
+const offsetPoint = (point: PdfPoint, delta: { dx: number; dy: number }): PdfPoint => ({
+  x: point.x + delta.dx,
+  y: point.y + delta.dy,
+})
+
+const offsetRect = (rect: PdfRect, delta: { dx: number; dy: number }): PdfRect => ({
+  ...rect,
+  ...offsetPoint(rect, delta),
+})
 
 const normalizeFrame = (frame: PdfRect): PdfRect => ({
   x: frame.width < 0 ? frame.x + frame.width : frame.x,
@@ -177,6 +206,7 @@ const createShapeObject = (
   pageIndex: number,
   shape: AddShapeInput,
   zIndex: number,
+  id: string,
 ): ShapeOverlayObject => {
   const timestamp = createTimestamp()
   const frame =
@@ -185,7 +215,7 @@ const createShapeObject = (
       : normalizeFrame(shape.frame)
 
   return {
-    id: createId(),
+    id,
     type: 'shape',
     pageIndex,
     frame,
@@ -208,11 +238,11 @@ const withObject = (
   store: OverlayObjectStore,
   id: string,
   update: (object: OverlayObject) => OverlayObject,
-): OverlayObjectStore => ({
-  ...store,
-  isDirty: true,
-  objects: store.objects.map((object) => (object.id === id ? update(object) : object)),
-})
+): OverlayObjectStore =>
+  createOverlayObjectStore(
+    store.objects.map((object) => (object.id === id ? update(object) : object)),
+    true,
+  )
 
 export const createOverlayObjectStore = (
   objects: OverlayObject[] = [],
@@ -223,7 +253,7 @@ export const createOverlayObjectStore = (
   addPlaceholderObject: (pageIndex, frame) => {
     const timestamp = createTimestamp()
     const object: OverlayObject = {
-      id: createId(),
+      id: createUniqueId(objects),
       type: 'placeholder',
       pageIndex,
       frame: normalizeFrame(frame),
@@ -237,7 +267,7 @@ export const createOverlayObjectStore = (
   addTextObject: (pageIndex, frame, style) => {
     const timestamp = createTimestamp()
     const object: TextOverlayObject = {
-      id: createId(),
+      id: createUniqueId(objects),
       type: 'text',
       pageIndex,
       frame: normalizeFrame(frame),
@@ -253,7 +283,7 @@ export const createOverlayObjectStore = (
   addImageObject: (pageIndex, frame, image, style) => {
     const timestamp = createTimestamp()
     const object: ImageOverlayObject = {
-      id: createId(),
+      id: createUniqueId(objects),
       type: 'image',
       pageIndex,
       frame: normalizeFrame(frame),
@@ -270,7 +300,7 @@ export const createOverlayObjectStore = (
     const timestamp = createTimestamp()
     const normalizedRects = rects.map(normalizeRect).filter((rect) => rect.width > 0 && rect.height > 0)
     const object: HighlightOverlayObject = {
-      id: createId(),
+      id: createUniqueId(objects),
       type: 'highlight',
       pageIndex,
       frame: getRectBounds(normalizedRects),
@@ -286,7 +316,7 @@ export const createOverlayObjectStore = (
   addInkObject: (pageIndex, points, style) => {
     const timestamp = createTimestamp()
     const object: InkOverlayObject = {
-      id: createId(),
+      id: createUniqueId(objects),
       type: 'ink',
       pageIndex,
       frame: getPointBounds(points),
@@ -300,11 +330,14 @@ export const createOverlayObjectStore = (
     return createOverlayObjectStore([...objects, object], true)
   },
   addShapeObject: (pageIndex, shape) =>
-    createOverlayObjectStore([...objects, createShapeObject(pageIndex, shape, objects.length)], true),
+    createOverlayObjectStore(
+      [...objects, createShapeObject(pageIndex, shape, objects.length, createUniqueId(objects))],
+      true,
+    ),
   addMathObject: (pageIndex, frame, content, style) => {
     const timestamp = createTimestamp()
     const object: MathOverlayObject = {
-      id: createId(),
+      id: createUniqueId(objects),
       type: 'math',
       pageIndex,
       frame: normalizeFrame(frame),
@@ -337,11 +370,7 @@ export const moveOverlayObject = (
       return {
         ...object,
         frame,
-        rects: object.rects.map((rect) => ({
-          ...rect,
-          x: rect.x + delta.dx,
-          y: rect.y + delta.dy,
-        })),
+        rects: object.rects.map((rect) => offsetRect(rect, delta)),
         updatedAt: createTimestamp(),
       }
     }
@@ -350,10 +379,7 @@ export const moveOverlayObject = (
       return {
         ...object,
         frame,
-        points: object.points.map((point) => ({
-          x: point.x + delta.dx,
-          y: point.y + delta.dy,
-        })),
+        points: object.points.map((point) => offsetPoint(point, delta)),
         updatedAt: createTimestamp(),
       }
     }
@@ -362,14 +388,8 @@ export const moveOverlayObject = (
       return {
         ...object,
         frame,
-        start: {
-          x: object.start.x + delta.dx,
-          y: object.start.y + delta.dy,
-        },
-        end: {
-          x: object.end.x + delta.dx,
-          y: object.end.y + delta.dy,
-        },
+        start: offsetPoint(object.start, delta),
+        end: offsetPoint(object.end, delta),
         updatedAt: createTimestamp(),
       }
     }
@@ -380,6 +400,111 @@ export const moveOverlayObject = (
       updatedAt: createTimestamp(),
     }
   })
+
+export type DuplicateOverlayObjectResult = {
+  store: OverlayObjectStore
+  objectId: string | null
+}
+
+const cloneOverlayObject = (
+  object: OverlayObject,
+  id: string,
+  zIndex: number,
+  delta: { dx: number; dy: number },
+): OverlayObject => {
+  const timestamp = createTimestamp()
+  const base = {
+    id,
+    pageIndex: object.pageIndex,
+    frame: offsetRect(object.frame, delta),
+    zIndex,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }
+
+  switch (object.type) {
+    case 'text':
+      return {
+        ...base,
+        type: 'text',
+        contentHtml: object.contentHtml,
+        style: { ...object.style },
+      }
+    case 'image':
+      return {
+        ...base,
+        type: 'image',
+        image: {
+          ...object.image,
+          data: new Uint8Array(object.image.data),
+        },
+        style: { ...object.style },
+      }
+    case 'highlight':
+      return {
+        ...base,
+        type: 'highlight',
+        rects: object.rects.map((rect) => offsetRect(rect, delta)),
+        style: { ...object.style },
+      }
+    case 'ink':
+      return {
+        ...base,
+        type: 'ink',
+        points: object.points.map((point) => offsetPoint(point, delta)),
+        style: { ...object.style },
+      }
+    case 'shape':
+      return {
+        ...base,
+        type: 'shape',
+        kind: object.kind,
+        start: object.start ? offsetPoint(object.start, delta) : undefined,
+        end: object.end ? offsetPoint(object.end, delta) : undefined,
+        style: { ...object.style },
+      }
+    case 'math':
+      return {
+        ...base,
+        type: 'math',
+        latex: object.latex,
+        displayMode: object.displayMode,
+        color: object.color,
+        backgroundColor: object.backgroundColor,
+        opacity: object.opacity,
+        fontSize: object.fontSize,
+      }
+    case 'placeholder':
+      return {
+        ...base,
+        type: 'placeholder',
+      }
+  }
+}
+
+export const duplicateOverlayObject = (
+  store: OverlayObjectStore,
+  id: string,
+  delta: { dx: number; dy: number } = { dx: 0, dy: 0 },
+): DuplicateOverlayObjectResult => {
+  const object = getObjectById(store.objects, id)
+
+  if (!object) {
+    return { store, objectId: null }
+  }
+
+  const duplicatedObject = cloneOverlayObject(
+    object,
+    createUniqueId(store.objects),
+    store.objects.length,
+    delta,
+  )
+
+  return {
+    store: createOverlayObjectStore([...store.objects, duplicatedObject], true),
+    objectId: duplicatedObject.id,
+  }
+}
 
 export const updateOverlayObjectFrame = (
   store: OverlayObjectStore,
@@ -405,12 +530,12 @@ export const syncTextObjectHeight = (
     return store
   }
 
-  return {
-    ...store,
-    objects: store.objects.map((current) =>
+  return createOverlayObjectStore(
+    store.objects.map((current) =>
       current.id === id ? { ...current, frame: { ...current.frame, height } } : current,
     ),
-  }
+    store.isDirty,
+  )
 }
 
 export const resizeOverlayObject = (
@@ -848,6 +973,15 @@ export const createTextFrame = (origin: PdfPoint): PdfRect => ({
   // Height auto-fits the content; this is just an initial one-line estimate that the
   // editor measures and corrects via syncTextObjectHeight once rendered.
   height: 40,
+})
+
+export const centerFrameInPage = (
+  frame: PdfRect,
+  pageSize: { width: number; height: number },
+): PdfRect => ({
+  ...frame,
+  x: Math.max(0, (pageSize.width - frame.width) / 2),
+  y: Math.max(0, (pageSize.height - frame.height) / 2),
 })
 
 export const createImageFrame = ({

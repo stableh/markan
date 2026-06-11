@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  centerFrameInPage,
   createOverlayObjectStore,
+  createTextFrame,
   deleteEmptyTextObject,
   deleteOverlayObject,
+  duplicateOverlayObject,
   moveOverlayObject,
   resizeOverlayObject,
   updateOverlayObjectFrame,
@@ -15,6 +18,10 @@ import {
 } from './OverlayObjectStore'
 
 describe('OverlayObjectStore', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('creates placeholder objects with frames stored in PDF page coordinates', () => {
     const store = createOverlayObjectStore()
     const next = store.addPlaceholderObject(2, { x: 120, y: 80, width: 180, height: 90 })
@@ -80,7 +87,7 @@ describe('OverlayObjectStore', () => {
         textColor: '#111827',
         backgroundColor: 'transparent',
         borderColor: 'transparent',
-        padding: 8,
+        padding: 0,
         textAlign: 'left',
         fontFamily: 'Pretendard',
         fontWeight: 400,
@@ -90,6 +97,15 @@ describe('OverlayObjectStore', () => {
       },
     })
     expect(next.isDirty).toBe(true)
+  })
+
+  it('centers a text frame inside the current PDF page coordinates', () => {
+    expect(centerFrameInPage(createTextFrame({ x: 0, y: 0 }), { width: 640, height: 800 })).toEqual({
+      x: 200,
+      y: 380,
+      width: 240,
+      height: 40,
+    })
   })
 
   it('commits text content and style changes as dirty updates', () => {
@@ -206,6 +222,111 @@ describe('OverlayObjectStore', () => {
     })
     expect(updated.isDirty).toBe(true)
   })
+
+  it('keeps image and text objects independent even if the id source repeats', () => {
+    vi.stubGlobal('crypto', { randomUUID: () => 'repeated-id' })
+
+    const withImage = createOverlayObjectStore().addImageObject(
+      0,
+      { x: 40, y: 50, width: 200, height: 100 },
+      {
+        fileName: 'diagram.png',
+        mimeType: 'image/png',
+        data: new Uint8Array([1, 2, 3]),
+        naturalWidth: 400,
+        naturalHeight: 200,
+      },
+    )
+    const withText = withImage.addTextObject(0, { x: 10, y: 20, width: 220, height: 40 })
+    const [image, text] = withText.objects
+
+    expect(image.id).not.toBe(text.id)
+
+    const moved = moveOverlayObject(withText, text.id, { dx: 30, dy: 40 })
+
+    expect(moved.objects[0].frame).toEqual({ x: 40, y: 50, width: 200, height: 100 })
+    expect(moved.objects[1].frame).toEqual({ x: 40, y: 60, width: 220, height: 40 })
+  })
+
+  it('duplicates overlay objects with independent PDF-coordinate state', () => {
+    const withImage = createOverlayObjectStore().addImageObject(
+      0,
+      { x: 40, y: 50, width: 200, height: 100 },
+      {
+        fileName: 'diagram.png',
+        mimeType: 'image/png',
+        data: new Uint8Array([1, 2, 3]),
+        naturalWidth: 400,
+        naturalHeight: 200,
+      },
+    )
+    const withText = withImage.addTextObject(0, { x: 10, y: 20, width: 220, height: 40 })
+    const image = withText.objects[0]
+    const result = duplicateOverlayObject(withText, image.id)
+
+    expect(result.objectId).toBeTruthy()
+    expect(result.objectId).not.toBe(image.id)
+    expect(result.store.objects).toHaveLength(3)
+    expect(result.store.isDirty).toBe(true)
+
+    const duplicate = result.store.objects.find((object) => object.id === result.objectId)
+    expect(duplicate).toMatchObject({
+      type: 'image',
+      pageIndex: 0,
+      frame: { x: 40, y: 50, width: 200, height: 100 },
+      zIndex: 2,
+    })
+
+    if (duplicate?.type !== 'image' || image.type !== 'image') {
+      throw new Error('Expected duplicated image objects')
+    }
+
+    expect(duplicate.image.data).not.toBe(image.image.data)
+    expect(Array.from(duplicate.image.data)).toEqual([1, 2, 3])
+
+    const moved = moveOverlayObject(result.store, result.objectId!, { dx: 30, dy: 40 })
+
+    expect(moved.objects[0].frame).toEqual({ x: 40, y: 50, width: 200, height: 100 })
+    expect(moved.objects[2].frame).toEqual({ x: 70, y: 90, width: 200, height: 100 })
+  })
+
+  it('preserves existing image and text frames when creating another text object', () => {
+    const withImage = createOverlayObjectStore().addImageObject(
+      0,
+      { x: 40, y: 50, width: 200, height: 100 },
+      {
+        fileName: 'diagram.png',
+        mimeType: 'image/png',
+        data: new Uint8Array([1, 2, 3]),
+        naturalWidth: 400,
+        naturalHeight: 200,
+      },
+    )
+    const resized = updateOverlayObjectFrame(withImage, withImage.objects[0].id, {
+      x: 80,
+      y: 90,
+      width: 120,
+      height: 60,
+    })
+    const withFirstText = resized.addTextObject(0, { x: 10, y: 20, width: 220, height: 40 })
+    const firstTextId = withFirstText.objects[1].id
+    const withContent = updateTextObjectContent(withFirstText, firstTextId, '<p>first</p>')
+    const withSecondText = withContent.addTextObject(0, { x: 300, y: 320, width: 220, height: 40 })
+
+    expect(withSecondText.objects).toHaveLength(3)
+    expect(withSecondText.objects[0].frame).toEqual({ x: 80, y: 90, width: 120, height: 60 })
+    expect(withSecondText.objects[1]).toMatchObject({
+      id: firstTextId,
+      type: 'text',
+      contentHtml: '<p>first</p>',
+      frame: { x: 10, y: 20, width: 220, height: 40 },
+    })
+    expect(withSecondText.objects[2]).toMatchObject({
+      type: 'text',
+      frame: { x: 300, y: 320, width: 220, height: 40 },
+    })
+  })
+
 
   it('creates highlight objects with PDF-coordinate rects and editable style', () => {
     const next = createOverlayObjectStore().addHighlightObject(

@@ -1,6 +1,7 @@
 export const IPC_CHANNELS = {
   openPdf: 'pdfan:open-pdf',
   openImage: 'pdfan:open-image',
+  readClipboard: 'pdfan:read-clipboard',
   savePdf: 'pdfan:save-pdf',
   confirmUnsaved: 'pdfan:confirm-unsaved',
   showErrorDialog: 'pdfan:show-error-dialog',
@@ -25,6 +26,7 @@ export type ViewerCommand =
   | 'last-page'
   | 'toggle-thumbnails'
   | 'toggle-inspector'
+  | 'paste'
   | 'save'
   | 'save-as'
   | 'undo'

@@ -14,6 +14,7 @@ declare global {
     | 'last-page'
     | 'toggle-thumbnails'
     | 'toggle-inspector'
+    | 'paste'
     | 'save'
     | 'save-as'
     | 'undo'
@@ -61,10 +62,28 @@ declare global {
         data: Uint8Array
       }
 
+  type ClipboardPayload =
+    | {
+        kind: 'empty'
+      }
+    | {
+        kind: 'text'
+        text: string
+      }
+    | {
+        kind: 'image'
+        fileName: string
+        mimeType: 'image/png'
+        data: Uint8Array
+        naturalWidth: number
+        naturalHeight: number
+      }
+
   interface Window {
     pdfan?: {
       openPdf: () => Promise<OpenPdfResult>
       openImage: () => Promise<OpenImageResult>
+      readClipboard: () => Promise<ClipboardPayload>
       savePdf: (request: SavePdfBridgeRequest) => Promise<SaveBridgeResult>
       confirmUnsaved: () => Promise<'save' | 'discard' | 'cancel'>
       showErrorDialog: (title: string, message: string) => Promise<void>

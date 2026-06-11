@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import 'pdfjs-dist/web/pdf_viewer.css'
 import {
   AlignCenter,
@@ -11,7 +18,6 @@ import {
   ArrowUpRight,
   ArrowUpToLine,
   Bold,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
@@ -28,7 +34,6 @@ import {
   Maximize,
   MousePointer2,
   Minus,
-  PanelLeft,
   Pencil,
   Rows3,
   Save,
@@ -40,7 +45,6 @@ import {
   Trash2,
   Type,
   Underline,
-  X,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
@@ -49,6 +53,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist'
 import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.mjs?url'
 import { OverlayLayer } from '@/overlay/OverlayLayer'
 import {
+  centerFrameInPage,
   createOverlayObjectStore,
   createImageFrame,
   createPlaceholderFrame,
@@ -59,6 +64,7 @@ import {
   defaultShapeOverlayStyle,
   deleteEmptyTextObject,
   deleteOverlayObject,
+  duplicateOverlayObject,
   getObjectById,
   getObjectsForPage,
   isTextContentEmpty,
@@ -110,12 +116,14 @@ import type {
   TextOverlayStyle,
 } from '@/overlay/OverlayObject'
 import type { RichTextEditorHandle, RichTextEditorState } from '@/text/RichTextBox'
+import { plainTextToContentHtml } from '@/text/plainTextToContentHtml'
 import type { EditorTool } from '@/tools/EditorTool'
 import { isEditableShortcutTarget, resolveKeyboardCommand, setActiveTool } from '@/tools/ToolController'
 import { getPdfOpenErrorMessage } from './pdfErrors'
 import { PdfPageCanvas } from './PdfPageCanvas'
-import { PdfThumbnail } from './PdfThumbnail'
+import { ThumbnailRail } from './ThumbnailRail'
 import {
+  DEFAULT_PAGE_VIEW_MODE,
   getPageNumberForNavigation,
   type PageNavigationCommand,
   type PageViewMode,
@@ -183,7 +191,6 @@ const decodeImageSize = async (data: Uint8Array, mimeType: ImageOverlayData['mim
   }
 }
 
-const roundFrameValue = (value: number) => Math.round(value * 100) / 100
 const defaultHighlightStyle: HighlightOverlayStyle = {
   color: '#facc15',
   opacity: 0.45,
@@ -223,26 +230,6 @@ const toolShortcuts: Partial<Record<EditorTool, string>> = {
 }
 const getToolTitle = (tool: EditorTool) =>
   toolShortcuts[tool] ? `${toolLabels[tool]} (${toolShortcuts[tool]})` : toolLabels[tool]
-
-const objectTypeLabels: Record<string, string> = {
-  text: '텍스트',
-  image: '이미지',
-  highlight: '하이라이트',
-  ink: '펜',
-  shape: '도형',
-  math: '수식',
-  placeholder: '플레이스홀더',
-}
-
-const toolInspectorTitles: Partial<Record<EditorTool, string>> = {
-  highlight: '하이라이트',
-  ink: '펜',
-  rectangle: '도형',
-  ellipse: '도형',
-  line: '도형',
-  arrow: '도형',
-  math: '수식',
-}
 
 const fontFamilyOptions = ['Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Times New Roman', 'Arial']
 const fontWeightOptions = [
@@ -466,7 +453,6 @@ function GeometrySection({
 
 export function PdfViewer() {
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const thumbnailListRef = useRef<HTMLDivElement | null>(null)
   const basePdfStoreRef = useRef<BasePdfStore | null>(null)
   const overlayHistoryRef = useRef<OverlayHistory>(createEmptyOverlayHistory())
   const [loadedPdf, setLoadedPdf] = useState<LoadedPdf | null>(null)
@@ -483,10 +469,9 @@ export function PdfViewer() {
   const [currentPage, setCurrentPage] = useState(0)
   const [scale, setScale] = useState(1)
   const [mode, setMode] = useState<ViewerMode>('actual-size')
-  const [pageViewMode, setPageViewMode] = useState<PageViewMode>('continuous')
+  const [pageViewMode, setPageViewMode] = useState<PageViewMode>(DEFAULT_PAGE_VIEW_MODE)
   const [showThumbnails, setShowThumbnails] = useState(true)
   const [showInspector, setShowInspector] = useState(true)
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
   const [rotation, setRotation] = useState(0)
   const [mathInput, setMathInput] = useState<
     | { mode: 'create'; pageIndex: number; origin: PdfPoint }
@@ -494,6 +479,7 @@ export function PdfViewer() {
     | null
   >(null)
   const [overlayStore, setOverlayStore] = useState(createEmptyOverlayStore)
+  const overlayStoreRef = useRef(overlayStore)
   const [selection, setSelection] = useState(clearSelection)
   const [editingObjectId, setEditingObjectId] = useState<string | null>(null)
   const [activeTextEditor, setActiveTextEditor] = useState<RichTextEditorHandle | null>(null)
@@ -540,9 +526,6 @@ export function PdfViewer() {
     (activeShapeKind ? shapeInspectorStyle.opacity : undefined) ??
     selectedMathObject?.opacity ??
     textStyle.opacity
-  const inspectorTitle = selectedObject
-    ? objectTypeLabels[selectedObject.type] ?? '속성'
-    : toolInspectorTitles[activeTool] ?? '속성'
   const saveStatus = saving ? '저장 중...' : overlayStore.isDirty ? '수정됨' : '저장됨'
 
   const getViewportSize = useCallback(() => {
@@ -555,11 +538,13 @@ export function PdfViewer() {
 
   const resetOverlayHistory = useCallback((nextStore = createOverlayObjectStore()) => {
     overlayHistoryRef.current = createOverlayHistory(nextStore)
+    overlayStoreRef.current = nextStore
     setOverlayStore(nextStore)
   }, [])
 
   const commitOverlayStore = useCallback((nextStore: ReturnType<typeof createOverlayObjectStore>) => {
     overlayHistoryRef.current = pushOverlayHistory(overlayHistoryRef.current, nextStore)
+    overlayStoreRef.current = nextStore
     setOverlayStore(nextStore)
   }, [])
 
@@ -570,6 +555,7 @@ export function PdfViewer() {
       setOverlayStore((currentStore) => {
         const nextStore = update(currentStore)
         overlayHistoryRef.current = pushOverlayHistory(overlayHistoryRef.current, nextStore)
+        overlayStoreRef.current = nextStore
         return nextStore
       })
     },
@@ -773,6 +759,7 @@ export function PdfViewer() {
           clearEditingState()
         }
 
+        overlayStoreRef.current = nextStore
         return nextStore
       })
     } catch (imageError) {
@@ -826,6 +813,87 @@ export function PdfViewer() {
       return nextStore
     })
   }, [textStyle, updateOverlayStore])
+
+  const handlePasteFromClipboard = useCallback(async () => {
+    const bridge = window.pdfan
+
+    if (!bridge || !loadedPdf) {
+      return
+    }
+
+    const pageSize = getCurrentPageBaseSize()
+
+    if (!pageSize) {
+      return
+    }
+
+    try {
+      const payload = await bridge.readClipboard()
+
+      if (payload.kind === 'empty') {
+        return
+      }
+
+      const pageIndex = Math.max(0, (currentPage || 1) - 1)
+
+      if (payload.kind === 'image') {
+        const data = payload.data instanceof Uint8Array ? payload.data : new Uint8Array(payload.data)
+        const imageSize = { width: payload.naturalWidth, height: payload.naturalHeight }
+        const frame = createImageFrame({ pageSize, imageSize })
+
+        updateOverlayStore((currentStore) => {
+          const nextStore = currentStore.addImageObject(pageIndex, frame, {
+            fileName: payload.fileName,
+            mimeType: payload.mimeType,
+            data,
+            naturalWidth: imageSize.width,
+            naturalHeight: imageSize.height,
+          })
+          const createdObject = nextStore.objects[nextStore.objects.length - 1]
+
+          if (createdObject) {
+            setSelection(selectOverlayObject(createdObject.id))
+            clearEditingState()
+            setActiveToolState('select')
+          }
+
+          return nextStore
+        })
+        return
+      }
+
+      const frame = centerFrameInPage(createTextFrame({ x: 0, y: 0 }), pageSize)
+      const contentHtml = plainTextToContentHtml(payload.text)
+
+      updateOverlayStore((currentStore) => {
+        const withText = currentStore.addTextObject(pageIndex, frame, textStyle)
+        const createdObject = withText.objects[withText.objects.length - 1]
+
+        if (!createdObject) {
+          return withText
+        }
+
+        setSelection(selectOverlayObject(createdObject.id))
+        clearEditingState()
+        setActiveToolState('select')
+        return updateTextObjectContent(withText, createdObject.id, contentHtml)
+      })
+    } catch (pasteError) {
+      reportError(
+        'Paste Failed',
+        pasteError instanceof Error ? pasteError.message : 'Clipboard paste failed',
+        pasteError,
+      )
+    }
+  }, [
+    clearEditingState,
+    currentPage,
+    getCurrentPageBaseSize,
+    loadedPdf,
+    reportError,
+    textStyle,
+    updateOverlayStore,
+  ])
 
   const handleCreateInk = useCallback(
     (pageIndex: number, points: PdfPoint[]) => {
@@ -893,12 +961,34 @@ export function PdfViewer() {
   // Auto-height: the editor reports its rendered height; sync it without touching history/dirty
   // since it's derived from content, not a user edit.
   const handleSyncTextHeight = useCallback((objectId: string, height: number) => {
-    setOverlayStore((currentStore) => syncTextObjectHeight(currentStore, objectId, height))
+    setOverlayStore((currentStore) => {
+      const nextStore = syncTextObjectHeight(currentStore, objectId, height)
+      overlayStoreRef.current = nextStore
+      return nextStore
+    })
   }, [])
 
   const handleMoveObject = useCallback((objectId: string, delta: { dx: number; dy: number }) => {
     updateOverlayStore((currentStore) => moveOverlayObject(currentStore, objectId, delta))
   }, [updateOverlayStore])
+
+  const handleDuplicateObject = useCallback(
+    (objectId: string) => {
+      const result = duplicateOverlayObject(overlayStoreRef.current, objectId)
+      const duplicatedObjectId = result.objectId
+
+      if (duplicatedObjectId) {
+        overlayHistoryRef.current = pushOverlayHistory(overlayHistoryRef.current, result.store)
+        overlayStoreRef.current = result.store
+        setOverlayStore(result.store)
+        clearEditingState()
+        setSelection(selectOverlayObject(duplicatedObjectId))
+      }
+
+      return duplicatedObjectId
+    },
+    [clearEditingState],
+  )
 
   const handleResizeObject = useCallback(
     (objectId: string, handle: ResizeHandlePosition, delta: { dx: number; dy: number }) => {
@@ -1271,6 +1361,7 @@ export function PdfViewer() {
             : current,
         )
         overlayHistoryRef.current = markOverlayHistorySaved(overlayHistoryRef.current, result.overlayStore)
+        overlayStoreRef.current = result.overlayStore
         setOverlayStore(result.overlayStore)
         return true
       } catch (saveError) {
@@ -1330,6 +1421,7 @@ export function PdfViewer() {
     }
 
     clearEditingState()
+    overlayStoreRef.current = history.present
     setOverlayStore(history.present)
   }, [clearEditingState, selection.selectedObjectId])
 
@@ -1494,6 +1586,15 @@ export function PdfViewer() {
         return
       }
 
+      if (command === 'paste') {
+        if (isEditableShortcutTarget(document.activeElement)) {
+          return
+        }
+
+        void handlePasteFromClipboard()
+        return
+      }
+
       if (
         command === 'select' ||
         command === 'text' ||
@@ -1558,6 +1659,7 @@ export function PdfViewer() {
       handleCloseWithPrompt,
       handleDeleteSelection,
       handleOpenPdfWithPrompt,
+      handlePasteFromClipboard,
       handleRedo,
       handleSave,
       handleToolChange,
@@ -1608,15 +1710,6 @@ export function PdfViewer() {
     requestAnimationFrame(updateCurrentPageFromScroll)
   }, [scale, pageSizes, updateCurrentPageFromScroll])
 
-  // Keep the active thumbnail visible as the current page changes (scroll or navigation).
-  useEffect(() => {
-    if (!showThumbnails) {
-      return
-    }
-
-    const activeThumbnail = thumbnailListRef.current?.querySelector<HTMLElement>('.thumbnail-active')
-    activeThumbnail?.scrollIntoView({ block: 'nearest' })
-  }, [currentPage, showThumbnails])
 
   useEffect(() => {
     if (activeTool !== 'highlight') {
@@ -1685,6 +1778,24 @@ export function PdfViewer() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [activeTextEditor, handleSave, handleViewerCommand])
 
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+      if (isEditableShortcutTarget(event.target)) {
+        return
+      }
+
+      if (!loadedPdf) {
+        return
+      }
+
+      event.preventDefault()
+      void handlePasteFromClipboard()
+    }
+
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [handlePasteFromClipboard, loadedPdf])
+
   const mathInitial = useMemo(() => {
     if (!mathInput) {
       return null
@@ -1714,13 +1825,16 @@ export function PdfViewer() {
       />
     </>
   )
+  const titleBarText = loadedPdf
+    ? `${overlayStore.isDirty ? '*' : ''}${loadedPdf.fileName}`
+    : 'PDFan'
 
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="title-bar">
-          <div className="title-bar-title" title={loadedPdf?.filePath ?? ''}>
-            PDF Editor Pro
+          <div className="title-bar-title" title={loadedPdf?.filePath ?? titleBarText}>
+            {titleBarText}
           </div>
 
           <div className="title-bar-right">
@@ -1940,54 +2054,69 @@ export function PdfViewer() {
       >
         {showThumbnails ? (
         <aside className="thumbnail-sidebar" aria-label="Page thumbnails">
-          <div className="sidebar-title">
-            <PanelLeft size={15} />
-            <span className="sidebar-title-label">페이지</span>
-            <div className="sidebar-title-actions">
-              <button
-                type="button"
-                className="sidebar-action"
-                onClick={() => setShowThumbnails(false)}
-                title="페이지 패널 닫기"
-                aria-label="페이지 패널 닫기"
-              >
-                <X size={15} />
-              </button>
-            </div>
-          </div>
-          <div className="thumbnail-list" ref={thumbnailListRef}>
-            {loadedPdf
-              ? pageNumbers.map((pageNumber) => (
-                  <PdfThumbnail
-                    key={pageNumber}
-                    document={loadedPdf.document}
-                    pageNumber={pageNumber}
-                    active={pageNumber === currentPage}
-                    onClick={() => {
-                      setCurrentPage(pageNumber)
+          {loadedPdf ? (
+            <ThumbnailRail
+              document={loadedPdf.document}
+              pageNumbers={pageNumbers}
+              currentPage={currentPage}
+              onSelectPage={(pageNumber) => {
+                setCurrentPage(pageNumber)
 
-                      if (pageViewMode === 'continuous') {
-                        requestAnimationFrame(() => {
-                          const container = scrollRef.current
-                          const page = container?.querySelector<HTMLElement>(
-                            `.pdf-page[data-page-number="${pageNumber}"]`,
-                          )
+                if (pageViewMode === 'continuous') {
+                  requestAnimationFrame(() => {
+                    const container = scrollRef.current
+                    const page = container?.querySelector<HTMLElement>(
+                      `.pdf-page[data-page-number="${pageNumber}"]`,
+                    )
 
-                          if (container && page) {
-                            container.scrollTo({
-                              top: Math.max(0, page.offsetTop - 18),
-                              behavior: 'smooth',
-                            })
-                          }
-                        })
-                      }
-                    }}
-                  />
-                ))
-              : null}
-          </div>
+                    if (container && page) {
+                      container.scrollTo({
+                        top: Math.max(0, page.offsetTop - 18),
+                        behavior: 'smooth',
+                      })
+                    }
+                  })
+                }
+              }}
+            />
+          ) : (
+            <div className="thumbnail-list" />
+          )}
+          <button
+            type="button"
+            className="sidebar-edge-collapse sidebar-edge-collapse-left"
+            onClick={() => setShowThumbnails(false)}
+            title="페이지 패널 접기"
+            aria-label="페이지 패널 접기"
+          >
+            <span>
+              <ChevronLeft size={14} />
+            </span>
+          </button>
         </aside>
-        ) : null}
+        ) : (
+          <aside
+            className="sidebar-rail sidebar-rail-left"
+            role="button"
+            tabIndex={0}
+            onClick={() => setShowThumbnails(true)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                setShowThumbnails(true)
+              }
+            }}
+            title="페이지 패널 열기"
+            aria-label="페이지 패널 열기"
+          >
+            <span
+              className="sidebar-rail-button"
+              aria-hidden="true"
+            >
+              <ChevronRight size={15} />
+            </span>
+          </aside>
+        )}
 
         <section
           ref={scrollRef}
@@ -1997,7 +2126,7 @@ export function PdfViewer() {
         >
           {!loadedPdf ? (
             <div className="empty-state">
-              <img className="empty-state-logo" src="/logo/logo.svg" alt="" aria-hidden="true" />
+              <img className="empty-state-logo" src="./logo/logo.svg" alt="" aria-hidden="true" />
               <h1>PDFan</h1>
               <button type="button" className="tool-button primary" onClick={() => void handleOpenPdfWithPrompt()}>
                 <FolderOpen size={18} />
@@ -2044,6 +2173,7 @@ export function PdfViewer() {
                       onRegisterTextEditor={setActiveTextEditor}
                       onTextEditorStateChange={setTextEditorState}
                       onMoveObject={handleMoveObject}
+                      onDuplicateObject={handleDuplicateObject}
                       onResizeObject={handleResizeObject}
                       onSelectObject={(objectId) => setSelection(selectOverlayObject(objectId))}
                     />
@@ -2056,21 +2186,7 @@ export function PdfViewer() {
 
         {showInspector ? (
         <aside className="inspector-panel" aria-label="Inspector" data-preserve-empty-text-box="true">
-          <div className="inspector-header">
-            <Type size={15} />
-            <span className="inspector-header-title">{inspectorTitle}</span>
-            <button
-              type="button"
-              className={`inspector-collapse ${inspectorCollapsed ? 'is-collapsed' : ''}`}
-              onClick={() => setInspectorCollapsed((current) => !current)}
-              title={inspectorCollapsed ? '펼치기' : '접기'}
-              aria-label="인스펙터 접기"
-            >
-              <ChevronDown size={16} />
-            </button>
-          </div>
-          {inspectorCollapsed ? null : (
-            <div className="inspector-content">
+          <div className="inspector-content">
               {selectedHighlightObject || activeTool === 'highlight' ? (
                 <>
                   <InspectorSection title="색상">
@@ -2494,10 +2610,42 @@ export function PdfViewer() {
               ) : (
                 <div className="inspector-empty">선택된 항목이 없습니다.</div>
               )}
-            </div>
-          )}
+          </div>
+          <button
+            type="button"
+            className="sidebar-edge-collapse sidebar-edge-collapse-right"
+            onClick={() => setShowInspector(false)}
+            title="속성 패널 접기"
+            aria-label="속성 패널 접기"
+          >
+            <span>
+              <ChevronRight size={14} />
+            </span>
+          </button>
         </aside>
-        ) : null}
+        ) : (
+          <aside
+            className="sidebar-rail sidebar-rail-right"
+            role="button"
+            tabIndex={0}
+            onClick={() => setShowInspector(true)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                setShowInspector(true)
+              }
+            }}
+            title="속성 패널 열기"
+            aria-label="속성 패널 열기"
+          >
+            <span
+              className="sidebar-rail-button"
+              aria-hidden="true"
+            >
+              <ChevronLeft size={15} />
+            </span>
+          </aside>
+        )}
       </main>
 
       <footer className="status-bar">
@@ -2517,7 +2665,7 @@ export function PdfViewer() {
             >
               <ChevronLeft size={15} />
             </button>
-            <span>{loadedPdf ? `${currentPage || 1} / ${loadedPdf.pageCount} 페이지` : '페이지 -'}</span>
+            <span>{loadedPdf ? `${currentPage || 1} / ${loadedPdf.pageCount}` : '-'}</span>
             <button
               type="button"
               className="status-nav-btn"
@@ -2529,7 +2677,8 @@ export function PdfViewer() {
               <ChevronRight size={15} />
             </button>
           </span>
-          <span className="status-divider" />
+        </span>
+        <span className="status-right">
           <span className="status-zoom-group">
             <button
               type="button"
@@ -2561,25 +2710,6 @@ export function PdfViewer() {
               <ZoomIn size={14} />
             </button>
           </span>
-          <span className="status-divider" />
-          {loadedPdf ? (pageViewMode === 'continuous' ? 'Continuous Scroll' : 'Single Page') : 'View -'}
-        </span>
-        <span className="status-right">
-          {selectedObject ? (
-            <>
-              {objectTypeLabels[selectedObject.type] ?? selectedObject.type}
-              <span className="status-divider" />
-              ({roundFrameValue(selectedObject.frame.x)}, {roundFrameValue(selectedObject.frame.y)})
-              <span className="status-divider" />
-              w: {roundFrameValue(selectedObject.frame.width)} h: {roundFrameValue(selectedObject.frame.height)}
-            </>
-          ) : (
-            <>
-              {loadedPdf ? toolLabels[activeTool] : 'Tool -'}
-              <span className="status-divider" />
-              선택 없음
-            </>
-          )}
         </span>
       </footer>
 

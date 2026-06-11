@@ -31,7 +31,7 @@ describe('viewerMath', () => {
         pageWidth: 500,
         pageHeight: 1000,
       }),
-    ).toBe(0.72)
+    ).toBe(0.7)
   })
 
   it('returns the page whose vertical center is closest to the viewport center', () => {

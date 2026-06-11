@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, nativeTheme } from 'electron'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import path from 'node:path'
@@ -47,6 +47,23 @@ type OpenImageResult =
       filePath: string
       mimeType: 'image/png' | 'image/jpeg'
       data: Uint8Array
+    }
+
+type ClipboardPayload =
+  | {
+      kind: 'empty'
+    }
+  | {
+      kind: 'text'
+      text: string
+    }
+  | {
+      kind: 'image'
+      fileName: string
+      mimeType: 'image/png'
+      data: Uint8Array
+      naturalWidth: number
+      naturalHeight: number
     }
 
 type SavePdfRequest = {
@@ -236,6 +253,31 @@ const openImageFromDialog = async (): Promise<OpenImageResult> => {
     mimeType,
     data: new Uint8Array(data),
   }
+}
+
+const readClipboardPayload = (): ClipboardPayload => {
+  const image = clipboard.readImage()
+
+  if (!image.isEmpty()) {
+    const size = image.getSize()
+
+    return {
+      kind: 'image',
+      fileName: 'clipboard.png',
+      mimeType: 'image/png',
+      data: new Uint8Array(image.toPNG()),
+      naturalWidth: size.width,
+      naturalHeight: size.height,
+    }
+  }
+
+  const text = clipboard.readText()
+
+  if (text.length > 0) {
+    return { kind: 'text', text }
+  }
+
+  return { kind: 'empty' }
 }
 
 const savePdf = async (_event: Electron.IpcMainInvokeEvent, request: SavePdfRequest): Promise<SavePdfResult> => {
@@ -571,7 +613,7 @@ const createWindow = async () => {
     title: 'PDFan',
     backgroundColor: '#0b0f14',
     titleBarStyle: 'hidden',
-    trafficLightPosition: { x: 16, y: 16 },
+    trafficLightPosition: { x: 16, y: 12 },
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.cjs'),
       contextIsolation: true,
@@ -603,6 +645,7 @@ const createWindow = async () => {
 app.whenReady().then(async () => {
   ipcMain.handle(IPC_CHANNELS.openPdf, openPdfFromDialog)
   ipcMain.handle(IPC_CHANNELS.openImage, openImageFromDialog)
+  ipcMain.handle(IPC_CHANNELS.readClipboard, readClipboardPayload)
   ipcMain.handle(IPC_CHANNELS.savePdf, savePdf)
   ipcMain.handle(IPC_CHANNELS.confirmUnsaved, showUnsavedChangesDialog)
   ipcMain.handle(IPC_CHANNELS.showErrorDialog, async (_event, payload: { title: string; message: string }) => {

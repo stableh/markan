@@ -29,7 +29,7 @@ describe('MetadataStore', () => {
         textColor: '#111827',
         backgroundColor: '#ffffff',
         borderColor: '#2563eb',
-        padding: 8,
+        padding: 4,
         textAlign: 'left',
         letterSpacing: 0,
         lineHeight: 1.4,

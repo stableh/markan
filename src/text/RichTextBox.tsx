@@ -72,6 +72,9 @@ const extensions = [
       keepMarks: true,
       keepAttributes: false,
     },
+    // Text boxes are fixed-size overlays; we don't want the editor auto-appending an empty
+    // paragraph after a trailing list/block (it renders as an extra blank line at the bottom).
+    trailingNode: false,
   }),
   Underline,
   TextStyle,

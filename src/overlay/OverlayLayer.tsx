@@ -28,6 +28,7 @@ type DragState =
   | {
       type: 'move'
       objectId: string
+      duplicateSourceId?: string
       lastPoint: PdfPoint
     }
   | {
@@ -62,6 +63,7 @@ type OverlayLayerProps = {
   onRegisterTextEditor: (handle: RichTextEditorHandle | null) => void
   onTextEditorStateChange: (state: RichTextEditorState) => void
   onMoveObject: (objectId: string, delta: { dx: number; dy: number }) => void
+  onDuplicateObject: (objectId: string) => string | null
   onResizeObject: (
     objectId: string,
     handle: ResizeHandlePosition,
@@ -452,6 +454,7 @@ export function OverlayLayer({
   onRegisterTextEditor,
   onTextEditorStateChange,
   onMoveObject,
+  onDuplicateObject,
   onResizeObject,
   onSelectObject,
 }: OverlayLayerProps) {
@@ -486,7 +489,22 @@ export function OverlayLayer({
       const delta = getDelta(currentPoint, dragState.lastPoint)
 
       if (dragState.type === 'move') {
-        onMoveObject(dragState.objectId, delta)
+        const objectId = dragState.duplicateSourceId
+          ? onDuplicateObject(dragState.duplicateSourceId)
+          : dragState.objectId
+
+        if (!objectId) {
+          return
+        }
+
+        onMoveObject(objectId, delta)
+        dragStateRef.current = {
+          ...dragState,
+          objectId,
+          duplicateSourceId: undefined,
+          lastPoint: currentPoint,
+        }
+        return
       } else {
         onResizeObject(dragState.objectId, dragState.handle, delta)
       }
@@ -667,6 +685,17 @@ export function OverlayLayer({
 
               if (object.type === 'text' && editing) {
                 event.stopPropagation()
+                return
+              }
+
+              if (event.altKey) {
+                lastPointerDownRef.current = null
+                startDrag(event, {
+                  type: 'move',
+                  objectId: object.id,
+                  duplicateSourceId: object.id,
+                  lastPoint: getPointFromEvent(event.nativeEvent, layer, viewport),
+                })
                 return
               }
 

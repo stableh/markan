@@ -16,6 +16,7 @@ export type KeyboardCommand =
   | 'next-page'
   | 'first-page'
   | 'last-page'
+  | 'paste'
   | 'undo'
   | 'redo'
 
@@ -115,6 +116,10 @@ export const resolveKeyboardCommand = ({
     }
 
     return toolShortcuts[normalized] ?? null
+  }
+
+  if (metaKey && normalized === 'v') {
+    return 'paste'
   }
 
   if (metaKey && normalized === 'o') {
