@@ -30,6 +30,7 @@ export type FlattenImage = {
   frame: PdfRect
   mimeType: 'image/png' | 'image/jpeg'
   data: Uint8Array
+  opacity: number
 }
 
 export type FlattenHighlight = {
@@ -245,6 +246,7 @@ export const flattenTextImagesOntoPdf = async (
       frame: textImage.frame,
       mimeType: 'image/png' as const,
       data: textImage.pngData,
+      opacity: 1,
     })),
     ...imageOverlays,
   ]) {
@@ -274,6 +276,7 @@ export const flattenTextImagesOntoPdf = async (
       y: instruction.y,
       width: instruction.width,
       height: instruction.height,
+      opacity: clampOpacity(image.opacity),
     })
   }
 

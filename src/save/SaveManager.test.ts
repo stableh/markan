@@ -6,6 +6,7 @@ import {
   resizeOverlayObject,
   updateOverlayObjectFrame,
   updateHighlightObjectStyle,
+  updateImageObjectStyle,
   updateInkObjectStyle,
   updateShapeObjectStyle,
   updateTextObjectContent,
@@ -144,13 +145,14 @@ describe('SaveManager', () => {
       },
     )
     const objectId = overlayStore.objects[0].id
+    const styledOverlayStore = updateImageObjectStyle(overlayStore, objectId, { opacity: 0.42 })
     const capturedRequests: SavePdfBridgeRequest[] = []
 
     const result = await saveDocument({
       mode: 'direct',
       currentPath: '/tmp/exam.pdf',
       basePdfBytes: new Uint8Array([1, 2, 3]),
-      overlayStore,
+      overlayStore: styledOverlayStore,
       bridge: {
         savePdf: async (request) => {
           capturedRequests.push(request)
@@ -171,6 +173,7 @@ describe('SaveManager', () => {
       pageIndex: 0,
       frame: { x: 15, y: 25, width: 120, height: 60 },
       mimeType: 'image/png',
+      opacity: 0.42,
     })
 
     expect(result.status).toBe('saved')

@@ -107,6 +107,7 @@ export const saveDocument = async ({
     frame: object.frame,
     mimeType: object.image.mimeType,
     data: object.image.data,
+    opacity: object.style.opacity,
   }))
   const highlightOverlays = highlightObjects.map((object) => ({
     objectId: object.id,

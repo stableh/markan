@@ -4,13 +4,13 @@ import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  flattenTextImagesOntoPdf,
   type FlattenHighlight,
   type FlattenImage,
   type FlattenInk,
   type FlattenShape,
   type FlattenTextImage,
 } from '../src/save/FlattenRenderer'
+import { createPdfExportArtifacts } from '../src/save/PdfExportService'
 import {
   getMetadataPathForPdf,
   isPdfanMetadata,
@@ -274,23 +274,22 @@ const savePdf = async (_event: Electron.IpcMainInvokeEvent, request: SavePdfRequ
   const highlightOverlays = request.highlightOverlays ?? []
   const inkOverlays = request.inkOverlays ?? []
   const shapeOverlays = request.shapeOverlays ?? []
-  const outputPdfBytes = await flattenTextImagesOntoPdf(
+  const { outputPdfBytes, restartBasePdfBytes } = await createPdfExportArtifacts({
     basePdfBytes,
     textImages,
     imageOverlays,
     highlightOverlays,
     inkOverlays,
     shapeOverlays,
-  )
-  const outputBytes = new Uint8Array(outputPdfBytes)
+  })
   const metadata: PdfanMetadata = {
     ...request.metadata,
     sourcePdfPath: targetPath,
     savedAt: new Date().toISOString(),
-    basePdfDataBase64: bytesToBase64(basePdfBytes),
+    basePdfDataBase64: bytesToBase64(restartBasePdfBytes),
   }
 
-  await writeFile(targetPath, outputBytes)
+  await writeFile(targetPath, outputPdfBytes)
 
   const metadataPath = getMetadataStorePath(targetPath)
   await mkdir(path.dirname(metadataPath), { recursive: true })
@@ -300,7 +299,7 @@ const savePdf = async (_event: Electron.IpcMainInvokeEvent, request: SavePdfRequ
     canceled: false,
     fileName: path.basename(targetPath),
     filePath: targetPath,
-    data: outputBytes,
+    data: outputPdfBytes,
   }
 }
 

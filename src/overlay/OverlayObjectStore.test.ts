@@ -7,6 +7,7 @@ import {
   resizeOverlayObject,
   updateOverlayObjectFrame,
   updateHighlightObjectStyle,
+  updateImageObjectStyle,
   updateInkObjectStyle,
   updateShapeObjectStyle,
   updateTextObjectContent,
@@ -77,10 +78,15 @@ describe('OverlayObjectStore', () => {
       style: {
         fontSize: 16,
         textColor: '#111827',
-        backgroundColor: '#ffffff',
+        backgroundColor: 'transparent',
         borderColor: 'transparent',
         padding: 8,
         textAlign: 'left',
+        fontFamily: 'Pretendard',
+        fontWeight: 400,
+        letterSpacing: 0,
+        lineHeight: 1.4,
+        opacity: 1,
       },
     })
     expect(next.isDirty).toBe(true)
@@ -132,8 +138,33 @@ describe('OverlayObjectStore', () => {
         naturalWidth: 400,
         naturalHeight: 200,
       },
+      style: {
+        opacity: 1,
+      },
     })
     expect(next.isDirty).toBe(true)
+  })
+
+  it('updates image opacity as a dirty style change', () => {
+    const initial = createOverlayObjectStore().addImageObject(
+      0,
+      { x: 40, y: 50, width: 200, height: 100 },
+      {
+        fileName: 'diagram.png',
+        mimeType: 'image/png',
+        data: new Uint8Array([1, 2, 3]),
+        naturalWidth: 400,
+        naturalHeight: 200,
+      },
+    )
+    const id = initial.objects[0].id
+    const updated = updateImageObjectStyle(initial, id, { opacity: 0.55 })
+
+    expect(updated.objects[0]).toMatchObject({
+      type: 'image',
+      style: { opacity: 0.55 },
+    })
+    expect(updated.isDirty).toBe(true)
   })
 
   it('preserves image aspect ratio when resizing', () => {

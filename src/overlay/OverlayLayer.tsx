@@ -101,7 +101,15 @@ function ImageOverlayView({ object }: { object: ImageOverlayObject }) {
 
   useEffect(() => () => URL.revokeObjectURL(imageUrl), [imageUrl])
 
-  return <img alt={object.image.fileName} className="overlay-image" draggable={false} src={imageUrl} />
+  return (
+    <img
+      alt={object.image.fileName}
+      className="overlay-image"
+      draggable={false}
+      src={imageUrl}
+      style={{ opacity: object.style.opacity }}
+    />
+  )
 }
 
 function TextOverlayView({

@@ -8,6 +8,23 @@ import StarterKit from '@tiptap/starter-kit'
 import { isTextContentEmpty } from '@/overlay/OverlayObjectStore'
 import type { TextAlign as PdfTextAlign, TextOverlayObject } from '@/overlay/OverlayObject'
 
+export const PRESERVE_EMPTY_TEXT_BOX_SELECTOR = '[data-preserve-empty-text-box="true"]'
+
+export const shouldDeleteEmptyTextObjectOnBlur = (
+  contentHtml: string,
+  relatedTarget: EventTarget | null,
+) => {
+  if (!isTextContentEmpty(contentHtml)) {
+    return false
+  }
+
+  const closest = (relatedTarget as { closest?: (selector: string) => unknown } | null)?.closest
+  const preserveTarget =
+    typeof closest === 'function' ? closest.call(relatedTarget, PRESERVE_EMPTY_TEXT_BOX_SELECTOR) : null
+
+  return !preserveTarget
+}
+
 export type RichTextEditorHandle = {
   toggleBold: () => void
   toggleItalic: () => void
@@ -108,12 +125,12 @@ export function RichTextBox({
       onFocus: ({ editor: focusedEditor }) => {
         updateEditorState(focusedEditor)
       },
-      onBlur: ({ editor: blurredEditor }) => {
+      onBlur: ({ editor: blurredEditor, event }) => {
         const contentHtml = blurredEditor.getHTML()
         onCommitContent(object.id, contentHtml)
         updateEditorState(blurredEditor)
 
-        if (isTextContentEmpty(contentHtml)) {
+        if (shouldDeleteEmptyTextObjectOnBlur(contentHtml, event.relatedTarget)) {
           onDeleteIfEmpty(object.id)
         }
 
@@ -177,6 +194,8 @@ export function RichTextBox({
   // zoom level (and stays consistent with the flattened output, which renders in PDF units).
   const hasBorder = !!object.style.borderColor && object.style.borderColor !== 'transparent'
   const style = {
+    fontFamily: object.style.fontFamily,
+    fontWeight: object.style.fontWeight,
     fontSize: `${object.style.fontSize * scale}px`,
     color: object.style.textColor,
     backgroundColor: object.style.backgroundColor,
@@ -184,6 +203,9 @@ export function RichTextBox({
     border: hasBorder ? `${scale}px solid ${object.style.borderColor}` : undefined,
     padding: `${object.style.padding * scale}px`,
     textAlign: object.style.textAlign,
+    letterSpacing: `${object.style.letterSpacing * scale}px`,
+    lineHeight: object.style.lineHeight,
+    opacity: object.style.opacity,
   }
 
   if (editing) {

@@ -83,7 +83,7 @@ const About = () => {
         </div>
       </div>
       
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-8 border border-gray-100">
+      <div className="bg-gray-50 rounded-xl p-8 border border-gray-100">
         <h3 className="text-xl font-semibold text-gray-800 mb-4">Key Improvements in Tailwind CSS v4.0</h3>
         <div className="grid md:grid-cols-2 gap-6">
           <div>

@@ -12,6 +12,7 @@ describe('ToolController', () => {
     expect(setActiveTool('select', 'ellipse')).toEqual({ activeTool: 'ellipse' })
     expect(setActiveTool('select', 'line')).toEqual({ activeTool: 'line' })
     expect(setActiveTool('select', 'arrow')).toEqual({ activeTool: 'arrow' })
+    expect(setActiveTool('select', 'math')).toEqual({ activeTool: 'math' })
   })
 
   it('does not route legacy single-key tool shortcuts', () => {
@@ -39,6 +40,7 @@ describe('ToolController', () => {
     expect(resolveKeyboardCommand({ key: 'o', metaKey: true, ctrlKey: true })).toBe('ellipse')
     expect(resolveKeyboardCommand({ key: 'l', metaKey: true, ctrlKey: true })).toBe('line')
     expect(resolveKeyboardCommand({ key: 'a', metaKey: true, ctrlKey: true })).toBe('arrow')
+    expect(resolveKeyboardCommand({ key: 'm', metaKey: true, ctrlKey: true })).toBe('math')
   })
 
   it('routes final view, save, page, and undo shortcuts', () => {

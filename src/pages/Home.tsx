@@ -5,25 +5,25 @@ const Home = () => {
 
   return (
     <div className="text-center">
-      <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-8">
+      <h1 className="text-5xl font-bold text-primary mb-8">
         React + TypeScript + Tailwind CSS v4.0
       </h1>
       
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg p-8 border border-gray-100">
         <div className="flex justify-center space-x-6 mb-8">
           <div className="relative">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg hover:shadow-xl transition-shadow">
+            <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg hover:shadow-xl transition-shadow">
               V
             </div>
             <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
           </div>
           <div className="relative">
-            <div className="w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg hover:shadow-xl transition-shadow animate-spin-slow">
+            <div className="w-16 h-16 bg-cyan-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg hover:shadow-xl transition-shadow animate-spin-slow">
               R
             </div>
           </div>
           <div className="relative">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg hover:shadow-xl transition-shadow">
+            <div className="w-16 h-16 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg hover:shadow-xl transition-shadow">
               T
             </div>
             <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full animate-bounce"></div>
@@ -36,7 +36,7 @@ const Home = () => {
         
         <button 
           onClick={() => setCount((count) => count + 1)}
-          className="bg-gradient-to-r from-primary to-secondary hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+          className="bg-primary hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
         >
           Count is {count}
         </button>

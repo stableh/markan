@@ -3,6 +3,7 @@ import type {
   HighlightOverlayStyle,
   ImageOverlayData,
   ImageOverlayObject,
+  ImageOverlayStyle,
   InkOverlayObject,
   InkOverlayStyle,
   MathOverlayObject,
@@ -56,7 +57,12 @@ export type OverlayObjectStore = {
   isDirty: boolean
   addPlaceholderObject: (pageIndex: number, frame: PdfRect) => OverlayObjectStore
   addTextObject: (pageIndex: number, frame: PdfRect, style?: Partial<TextOverlayStyle>) => OverlayObjectStore
-  addImageObject: (pageIndex: number, frame: PdfRect, image: ImageOverlayData) => OverlayObjectStore
+  addImageObject: (
+    pageIndex: number,
+    frame: PdfRect,
+    image: ImageOverlayData,
+    style?: Partial<ImageOverlayStyle>,
+  ) => OverlayObjectStore
   addHighlightObject: (
     pageIndex: number,
     rects: PdfRect[],
@@ -75,12 +81,21 @@ export type OverlayObjectStore = {
 const MIN_OBJECT_SIZE = 24
 
 export const defaultTextOverlayStyle: TextOverlayStyle = {
+  fontFamily: 'Pretendard',
+  fontWeight: 400,
   fontSize: 16,
   textColor: '#111827',
-  backgroundColor: '#ffffff',
+  backgroundColor: 'transparent',
   borderColor: 'transparent',
   padding: 8,
   textAlign: 'left',
+  letterSpacing: 0,
+  lineHeight: 1.4,
+  opacity: 1,
+}
+
+export const defaultImageOverlayStyle: ImageOverlayStyle = {
+  opacity: 1,
 }
 
 export const defaultMathOverlayStyle: MathOverlayStyle = {
@@ -235,7 +250,7 @@ export const createOverlayObjectStore = (
 
     return createOverlayObjectStore([...objects, object], true)
   },
-  addImageObject: (pageIndex, frame, image) => {
+  addImageObject: (pageIndex, frame, image, style) => {
     const timestamp = createTimestamp()
     const object: ImageOverlayObject = {
       id: createId(),
@@ -246,6 +261,7 @@ export const createOverlayObjectStore = (
       createdAt: timestamp,
       updatedAt: timestamp,
       image,
+      style: { ...defaultImageOverlayStyle, ...style },
     }
 
     return createOverlayObjectStore([...objects, object], true)
@@ -620,6 +636,24 @@ export const updateTextObjectStyle = (
 ): OverlayObjectStore =>
   withObject(store, id, (object) =>
     object.type === 'text'
+      ? {
+          ...object,
+          style: {
+            ...object.style,
+            ...style,
+          },
+          updatedAt: createTimestamp(),
+        }
+      : object,
+  )
+
+export const updateImageObjectStyle = (
+  store: OverlayObjectStore,
+  id: string,
+  style: Partial<ImageOverlayStyle>,
+): OverlayObjectStore =>
+  withObject(store, id, (object) =>
+    object.type === 'image'
       ? {
           ...object,
           style: {

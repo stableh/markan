@@ -1,9 +1,7 @@
-import type { TextAlign, TextOverlayObject } from '../overlay/OverlayObject'
+import type { TextAlign, TextOverlayObject, TextOverlayStyle } from '../overlay/OverlayObject'
 import type { FlattenTextImage } from '../save/FlattenRenderer'
 
 const FLATTEN_SCALE = 2
-const LINE_HEIGHT_RATIO = 1.35
-
 type TextSegment = {
   text: string
   bold: boolean
@@ -23,17 +21,25 @@ type LaidOutSegment = TextSegment & {
   width: number
 }
 
-const getFont = (segment: Pick<TextSegment, 'bold' | 'italic'>, fontSize: number) =>
-  `${segment.italic ? 'italic ' : ''}${segment.bold ? '700 ' : '400 '}${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`
+const clampOpacity = (opacity: number) => Math.max(0, Math.min(1, opacity))
+
+const getFontFamily = (style: TextOverlayStyle) =>
+  `"${style.fontFamily}", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`
+
+const getFont = (segment: Pick<TextSegment, 'bold' | 'italic'>, fontSize: number, style: TextOverlayStyle) => {
+  const weight = segment.bold ? 700 : style.fontWeight
+  return `${segment.italic ? 'italic ' : ''}${weight} ${fontSize}px ${getFontFamily(style)}`
+}
 
 const getTextWidth = (
   context: CanvasRenderingContext2D,
   text: string,
   segment: TextSegment,
   fontSize: number,
+  style: TextOverlayStyle,
 ) => {
-  context.font = getFont(segment, fontSize)
-  return context.measureText(text).width
+  context.font = getFont(segment, fontSize, style)
+  return context.measureText(text).width + Math.max(0, text.length - 1) * style.letterSpacing
 }
 
 const normalizeText = (text: string) => text.replace(/\s+/g, ' ')
@@ -169,6 +175,25 @@ const drawDecoration = (
   context.stroke()
 }
 
+const drawText = (
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  baseline: number,
+  letterSpacing: number,
+) => {
+  if (letterSpacing === 0 || text.length <= 1) {
+    context.fillText(text, x, baseline)
+    return
+  }
+
+  let nextX = x
+  for (const character of text) {
+    context.fillText(character, nextX, baseline)
+    nextX += context.measureText(character).width + letterSpacing
+  }
+}
+
 export const renderRichTextObjectToImage = async (
   object: TextOverlayObject,
 ): Promise<FlattenTextImage> => {
@@ -185,7 +210,7 @@ export const renderRichTextObjectToImage = async (
 
   const style = object.style
   const fontSize = style.fontSize
-  const lineHeight = fontSize * LINE_HEIGHT_RATIO
+  const lineHeight = fontSize * style.lineHeight
   const padding = style.padding
   const contentX = padding
   const contentY = padding
@@ -193,6 +218,7 @@ export const renderRichTextObjectToImage = async (
   const markerWidth = fontSize * 1.4
 
   context.scale(FLATTEN_SCALE, FLATTEN_SCALE)
+  context.globalAlpha = clampOpacity(style.opacity)
 
   if (style.backgroundColor && style.backgroundColor !== 'transparent') {
     context.fillStyle = style.backgroundColor
@@ -231,15 +257,15 @@ export const renderRichTextObjectToImage = async (
       const alignedLine = alignLine(currentLine, style.textAlign, lineStartX, lineWidth)
 
       if (marker) {
-        context.font = getFont({ bold: false, italic: false }, fontSize)
-        context.fillText(marker, contentX, baseline)
+        context.font = getFont({ bold: false, italic: false }, fontSize, style)
+        drawText(context, marker, contentX, baseline, style.letterSpacing)
       }
 
       for (const segment of alignedLine) {
-        context.font = getFont(segment, fontSize)
+        context.font = getFont(segment, fontSize, style)
         context.fillStyle = style.textColor
         context.strokeStyle = style.textColor
-        context.fillText(segment.text, segment.x, baseline)
+        drawText(context, segment.text, segment.x, baseline, style.letterSpacing)
         drawDecoration(context, segment, baseline, fontSize)
       }
 
@@ -248,7 +274,7 @@ export const renderRichTextObjectToImage = async (
     }
 
     for (const word of words) {
-      const wordWidth = getTextWidth(context, word.text, word, fontSize)
+      const wordWidth = getTextWidth(context, word.text, word, fontSize, style)
       const nextWidth = getLineWidth(currentLine) + wordWidth
 
       if (currentLine.length > 0 && nextWidth > lineWidth) {

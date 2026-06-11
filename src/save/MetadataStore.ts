@@ -10,6 +10,9 @@ export type PdfanMetadata = {
   objects: OverlayObject[]
 }
 
+const getRestartEditableObjects = (objects: OverlayObject[]) =>
+  objects.filter((object) => object.type !== 'image')
+
 export const getMetadataPathForPdf = (pdfPath: string) =>
   pdfPath.toLowerCase().endsWith('.pdf') ? pdfPath.replace(/\.pdf$/i, '.pdfedit.json') : `${pdfPath}.pdfedit.json`
 
@@ -29,7 +32,7 @@ export const createPdfanMetadata = ({
   sourcePdfPath,
   savedAt,
   basePdfDataBase64,
-  objects,
+  objects: getRestartEditableObjects(objects),
 })
 
 export const isPdfanMetadata = (value: unknown): value is PdfanMetadata => {
@@ -49,4 +52,4 @@ export const isPdfanMetadata = (value: unknown): value is PdfanMetadata => {
 }
 
 export const overlayStoreFromMetadata = (metadata: PdfanMetadata) =>
-  createOverlayObjectStore(metadata.objects, false)
+  createOverlayObjectStore(getRestartEditableObjects(metadata.objects), false)

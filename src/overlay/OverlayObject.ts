@@ -11,14 +11,20 @@ export type PdfRect = PdfPoint & {
 export type OverlayObjectType = 'placeholder' | 'text' | 'image' | 'highlight' | 'ink' | 'shape' | 'math'
 
 export type TextAlign = 'left' | 'center' | 'right'
+export type TextFontWeight = 300 | 400 | 500 | 600 | 700
 
 export type TextOverlayStyle = {
+  fontFamily: string
+  fontWeight: TextFontWeight
   fontSize: number
   textColor: string
   backgroundColor: string
   borderColor: string
   padding: number
   textAlign: TextAlign
+  letterSpacing: number
+  lineHeight: number
+  opacity: number
 }
 
 export type BaseOverlayObject = {
@@ -51,9 +57,14 @@ export type ImageOverlayData = {
   naturalHeight: number
 }
 
+export type ImageOverlayStyle = {
+  opacity: number
+}
+
 export type ImageOverlayObject = BaseOverlayObject & {
   type: 'image'
   image: ImageOverlayData
+  style: ImageOverlayStyle
 }
 
 export type HighlightOverlayStyle = {

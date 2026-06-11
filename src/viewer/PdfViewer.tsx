@@ -67,6 +67,7 @@ import {
   resizeOverlayObject,
   updateOverlayObjectFrame,
   updateHighlightObjectStyle,
+  updateImageObjectStyle,
   updateInkObjectStyle,
   updateShapeObjectStyle,
   updateTextObjectContent,
@@ -244,7 +245,13 @@ const toolInspectorTitles: Partial<Record<EditorTool, string>> = {
 }
 
 const fontFamilyOptions = ['Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Times New Roman', 'Arial']
-const fontWeightOptions = ['Light', 'Regular', 'Medium', 'SemiBold', 'Bold']
+const fontWeightOptions = [
+  { label: 'Light', value: 300 },
+  { label: 'Regular', value: 400 },
+  { label: 'Medium', value: 500 },
+  { label: 'SemiBold', value: 600 },
+  { label: 'Bold', value: 700 },
+] as const
 
 // ── Inspector presentational helpers ──────────────────────────
 function InspectorSection({ title, children }: { title?: string; children: ReactNode }) {
@@ -341,7 +348,6 @@ function OpacityRow({ value, onChange }: { value: number; onChange: (value: numb
         min={5}
         max={100}
         value={percent}
-        style={{ background: `linear-gradient(90deg, var(--accent) ${percent}%, var(--border) ${percent}%)` }}
         onChange={(event) => onChange(Number(event.currentTarget.value) / 100)}
         aria-label="불투명도"
       />
@@ -481,12 +487,6 @@ export function PdfViewer() {
   const [showThumbnails, setShowThumbnails] = useState(true)
   const [showInspector, setShowInspector] = useState(true)
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
-  // Visual-only typography/transform controls (not yet persisted to the PDF).
-  const [fontFamily, setFontFamily] = useState('Pretendard')
-  const [fontWeight, setFontWeight] = useState('Regular')
-  const [letterSpacing, setLetterSpacing] = useState(0)
-  const [lineHeight, setLineHeight] = useState(1.4)
-  const [visualOpacity, setVisualOpacity] = useState(1)
   const [rotation, setRotation] = useState(0)
   const [mathInput, setMathInput] = useState<
     | { mode: 'create'; pageIndex: number; origin: PdfPoint }
@@ -531,13 +531,15 @@ export function PdfViewer() {
       (selectedObject.type === 'shape' &&
         (selectedObject.kind === 'rectangle' || selectedObject.kind === 'ellipse')))
   const styleOpacity =
+    selectedTextObject?.style.opacity ??
+    selectedImageObject?.style.opacity ??
     selectedHighlightObject?.style.opacity ??
     (activeTool === 'highlight' ? highlightStyle.opacity : undefined) ??
     selectedInkObject?.style.opacity ??
     (activeTool === 'ink' ? inkStyle.opacity : undefined) ??
     (activeShapeKind ? shapeInspectorStyle.opacity : undefined) ??
     selectedMathObject?.opacity ??
-    visualOpacity
+    textStyle.opacity
   const inspectorTitle = selectedObject
     ? objectTypeLabels[selectedObject.type] ?? '속성'
     : toolInspectorTitles[activeTool] ?? '속성'
@@ -933,6 +935,13 @@ export function PdfViewer() {
     [activeTextEditor, updateOverlayStore],
   )
 
+  const handleUpdateImageStyle = useCallback(
+    (objectId: string, style: Partial<ImageOverlayObject['style']>) => {
+      updateOverlayStore((currentStore) => updateImageObjectStyle(currentStore, objectId, style))
+    },
+    [updateOverlayStore],
+  )
+
   const handleTextAlign = useCallback(
     (align: TextAlign) => {
       if (!selectedTextObject) {
@@ -1139,6 +1148,16 @@ export function PdfViewer() {
 
   const handleSelectedOpacityChange = useCallback(
     (value: number) => {
+      if (selectedTextObject) {
+        handleUpdateTextStyle(selectedTextObject.id, { opacity: value })
+        return
+      }
+
+      if (selectedImageObject) {
+        handleUpdateImageStyle(selectedImageObject.id, { opacity: value })
+        return
+      }
+
       if (selectedHighlightObject) {
         handleUpdateHighlightStyle(selectedHighlightObject.id, { opacity: value })
         return
@@ -1169,19 +1188,23 @@ export function PdfViewer() {
         return
       }
 
-      setVisualOpacity(value)
+      setTextStyle((current) => ({ ...current, opacity: value }))
     },
     [
       activeShapeKind,
       activeTool,
       handleShapeStyleChange,
       handleUpdateHighlightStyle,
+      handleUpdateImageStyle,
       handleUpdateInkStyle,
       handleUpdateMathStyle,
+      handleUpdateTextStyle,
       selectedHighlightObject,
+      selectedImageObject,
       selectedInkObject,
       selectedMathObject,
       selectedShapeObject,
+      selectedTextObject,
     ],
   )
 
@@ -2032,7 +2055,7 @@ export function PdfViewer() {
         </section>
 
         {showInspector ? (
-        <aside className="inspector-panel" aria-label="Inspector">
+        <aside className="inspector-panel" aria-label="Inspector" data-preserve-empty-text-box="true">
           <div className="inspector-header">
             <Type size={15} />
             <span className="inspector-header-title">{inspectorTitle}</span>
@@ -2176,8 +2199,10 @@ export function PdfViewer() {
                     <div className="insp-label">타이포</div>
                     <select
                       className="insp-select insp-field-full"
-                      value={fontFamily}
-                      onChange={(event) => setFontFamily(event.currentTarget.value)}
+                      value={selectedTextObject.style.fontFamily}
+                      onChange={(event) =>
+                        handleUpdateTextStyle(selectedTextObject.id, { fontFamily: event.currentTarget.value })
+                      }
                       aria-label="글꼴"
                     >
                       {fontFamilyOptions.map((family) => (
@@ -2189,13 +2214,17 @@ export function PdfViewer() {
                     <div className="insp-type-row">
                       <select
                         className="insp-select"
-                        value={fontWeight}
-                        onChange={(event) => setFontWeight(event.currentTarget.value)}
+                        value={selectedTextObject.style.fontWeight}
+                        onChange={(event) =>
+                          handleUpdateTextStyle(selectedTextObject.id, {
+                            fontWeight: Number(event.currentTarget.value) as TextOverlayStyle['fontWeight'],
+                          })
+                        }
                         aria-label="굵기"
                       >
                         {fontWeightOptions.map((weight) => (
-                          <option key={weight} value={weight}>
-                            {weight}
+                          <option key={weight.value} value={weight.value}>
+                            {weight.label}
                           </option>
                         ))}
                       </select>
@@ -2379,8 +2408,22 @@ export function PdfViewer() {
                       value={selectedTextObject.style.padding}
                       onChange={(padding) => handleUpdateTextStyle(selectedTextObject.id, { padding })}
                     />
-                    <NumberRow label="문자 간격" step={0.5} value={letterSpacing} onChange={setLetterSpacing} />
-                    <NumberRow label="줄 간격" step={0.1} value={lineHeight} onChange={setLineHeight} />
+                    <NumberRow
+                      label="문자 간격"
+                      step={0.5}
+                      value={selectedTextObject.style.letterSpacing}
+                      onChange={(letterSpacing) =>
+                        handleUpdateTextStyle(selectedTextObject.id, { letterSpacing })
+                      }
+                    />
+                    <NumberRow
+                      label="줄 간격"
+                      min={0.8}
+                      max={3}
+                      step={0.1}
+                      value={selectedTextObject.style.lineHeight}
+                      onChange={(lineHeight) => handleUpdateTextStyle(selectedTextObject.id, { lineHeight })}
+                    />
                   </InspectorSection>
                   <InspectorSection title="스타일">
                     <div className="insp-label">불투명도</div>
