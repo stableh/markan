@@ -1,0 +1,13 @@
+export type EditorTool =
+  | 'select'
+  | 'placeholder'
+  | 'text'
+  | 'image'
+  | 'highlight'
+  | 'ink'
+  | 'rectangle'
+  | 'ellipse'
+  | 'line'
+  | 'arrow'
+  | 'math'
+export type ToolCommand = EditorTool | 'delete'

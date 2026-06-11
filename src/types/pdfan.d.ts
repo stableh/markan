@@ -1,0 +1,79 @@
+declare global {
+  type ViewerCommand =
+    | 'open'
+    | 'zoom-in'
+    | 'zoom-out'
+    | 'actual-size'
+    | 'fit-page'
+    | 'fit-width'
+    | 'continuous-scroll'
+    | 'single-page'
+    | 'previous-page'
+    | 'next-page'
+    | 'first-page'
+    | 'last-page'
+    | 'toggle-thumbnails'
+    | 'toggle-inspector'
+    | 'save'
+    | 'save-as'
+    | 'undo'
+    | 'redo'
+    | 'delete'
+    | 'select'
+    | 'placeholder'
+    | 'text'
+    | 'highlight'
+    | 'ink'
+    | 'image'
+    | 'rectangle'
+    | 'ellipse'
+    | 'line'
+    | 'arrow'
+    | 'math'
+    | 'request-close'
+
+  type PdfanMetadata = import('../save/MetadataStore').PdfanMetadata
+  type SavePdfBridgeRequest = import('../save/SaveManager').SavePdfBridgeRequest
+  type SaveBridgeResult = import('../save/SaveManager').SaveBridgeResult
+
+  type OpenPdfResult =
+    | {
+        canceled: true
+      }
+    | {
+        canceled: false
+        fileName: string
+        filePath: string
+        data: Uint8Array
+        metadata: PdfanMetadata | null
+        metadataWarning?: string
+      }
+
+  type OpenImageResult =
+    | {
+        canceled: true
+      }
+    | {
+        canceled: false
+        fileName: string
+        filePath: string
+        mimeType: 'image/png' | 'image/jpeg'
+        data: Uint8Array
+      }
+
+  interface Window {
+    pdfan?: {
+      openPdf: () => Promise<OpenPdfResult>
+      openImage: () => Promise<OpenImageResult>
+      savePdf: (request: SavePdfBridgeRequest) => Promise<SaveBridgeResult>
+      confirmUnsaved: () => Promise<'save' | 'discard' | 'cancel'>
+      showErrorDialog: (title: string, message: string) => Promise<void>
+      setDirtyState: (isDirty: boolean) => Promise<void>
+      closeWindow: () => Promise<void>
+      onMenuOpenPdf: (callback: () => void) => () => void
+      onViewerCommand: (callback: (command: ViewerCommand) => void) => () => void
+    }
+  }
+}
+
+export {}
