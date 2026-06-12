@@ -73,7 +73,6 @@ import {
   reorderOverlayObject,
   resizeOverlayObject,
   updateOverlayObjectFrame,
-  updateHighlightObjectStyle,
   updateImageObjectStyle,
   updateInkObjectStyle,
   updateShapeObjectStyle,
@@ -104,8 +103,8 @@ import { createBasePdfStore, type BasePdfStore } from '@/save/BasePdfStore'
 import { overlayStoreFromMetadata } from '@/save/MetadataStore'
 import { saveDocument, type SaveMode } from '@/save/SaveManager'
 import { renderRichTextObjectsToImages } from '@/text/richTextFlatten'
-import { normalizeSelectionRectForHighlight } from '@/annotations/selectionRects'
-import { clearSelection, findHighlightObjectAtPoint, selectOverlayObject } from '@/overlay/SelectionManager'
+import { buildHighlightRectsFromTextIntersections } from '@/annotations/selectionRects'
+import { clearSelection, findHighlightObjectIdsOverlappingRects, selectOverlayObject } from '@/overlay/SelectionManager'
 import { splitHighlightOverlayObjects } from '@/overlay/overlayLayers'
 import {
   createOverlayHistory,
@@ -148,7 +147,7 @@ import {
   resolveFitPageScale,
   resolveFitWidthScale,
 } from './viewerMath'
-import { clientPointToPagePoint, viewportRectToPdfRect } from '@/coordinates/PdfCoordinateConverter'
+import { viewportRectToPdfRect } from '@/coordinates/PdfCoordinateConverter'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc
 
@@ -209,7 +208,7 @@ const decodeImageSize = async (data: Uint8Array, mimeType: ImageOverlayData['mim
 
 const defaultHighlightStyle: HighlightOverlayStyle = {
   color: '#facc15',
-  opacity: 0.45,
+  opacity: 1,
 }
 const defaultInkStyle: InkOverlayStyle = {
   color: '#2563eb',
@@ -525,7 +524,6 @@ export function PdfViewer() {
   )
   const selectedTextObject = selectedObject?.type === 'text' ? selectedObject : null
   const selectedImageObject = selectedObject?.type === 'image' ? selectedObject : null
-  const selectedHighlightObject = selectedObject?.type === 'highlight' ? selectedObject : null
   const selectedInkObject = selectedObject?.type === 'ink' ? selectedObject : null
   const selectedShapeObject = selectedObject?.type === 'shape' ? selectedObject : null
   const selectedMathObject = selectedObject?.type === 'math' ? selectedObject : null
@@ -548,7 +546,6 @@ export function PdfViewer() {
   const styleOpacity =
     selectedTextObject?.style.opacity ??
     selectedImageObject?.style.opacity ??
-    selectedHighlightObject?.style.opacity ??
     (activeTool === 'highlight' ? highlightStyle.opacity : undefined) ??
     selectedInkObject?.style.opacity ??
     (activeTool === 'ink' ? inkStyle.opacity : undefined) ??
@@ -1074,14 +1071,6 @@ export function PdfViewer() {
     [handleUpdateTextStyle, selectedTextObject],
   )
 
-  const handleUpdateHighlightStyle = useCallback(
-    (objectId: string, style: Partial<HighlightOverlayStyle>) => {
-      updateOverlayStore((currentStore) => updateHighlightObjectStyle(currentStore, objectId, style))
-      setHighlightStyle((current) => ({ ...current, ...style }))
-    },
-    [updateOverlayStore],
-  )
-
   const handleUpdateInkStyle = useCallback((objectId: string, style: Partial<InkOverlayStyle>) => {
     updateOverlayStore((currentStore) => updateInkObjectStyle(currentStore, objectId, style))
     setInkStyle((current) => ({ ...current, ...style }))
@@ -1279,11 +1268,6 @@ export function PdfViewer() {
         return
       }
 
-      if (selectedHighlightObject) {
-        handleUpdateHighlightStyle(selectedHighlightObject.id, { opacity: value })
-        return
-      }
-
       if (activeTool === 'highlight') {
         setHighlightStyle((current) => ({ ...current, opacity: value }))
         return
@@ -1315,12 +1299,10 @@ export function PdfViewer() {
       activeShapeKind,
       activeTool,
       handleShapeStyleChange,
-      handleUpdateHighlightStyle,
       handleUpdateImageStyle,
       handleUpdateInkStyle,
       handleUpdateMathStyle,
       handleUpdateTextStyle,
-      selectedHighlightObject,
       selectedImageObject,
       selectedInkObject,
       selectedMathObject,
@@ -1529,24 +1511,7 @@ export function PdfViewer() {
     )
     const rectsByPage = new Map<number, PdfRect[]>()
 
-    for (const clientRect of clientRects) {
-      const pageElement = pageElements.find((element) => {
-        const bounds = element.getBoundingClientRect()
-        const centerX = clientRect.left + clientRect.width / 2
-        const centerY = clientRect.top + clientRect.height / 2
-
-        return (
-          centerX >= bounds.left &&
-          centerX <= bounds.right &&
-          centerY >= bounds.top &&
-          centerY <= bounds.bottom
-        )
-      })
-
-      if (!pageElement) {
-        continue
-      }
-
+    for (const pageElement of pageElements) {
       const pageSection = pageElement.closest<HTMLElement>('.pdf-page')
       const pageNumber = Number(pageSection?.dataset.pageNumber)
 
@@ -1555,14 +1520,66 @@ export function PdfViewer() {
       }
 
       const pageBounds = pageElement.getBoundingClientRect()
-      const highlightRect = normalizeSelectionRectForHighlight({
-        x: clientRect.left - pageBounds.left,
-        y: clientRect.top - pageBounds.top,
-        width: clientRect.width,
-        height: clientRect.height,
+      const pageSelectionRects = clientRects
+        .map((rect) => {
+          const x = Math.max(rect.left, pageBounds.left)
+          const y = Math.max(rect.top, pageBounds.top)
+          const right = Math.min(rect.right, pageBounds.right)
+          const bottom = Math.min(rect.bottom, pageBounds.bottom)
+          const width = right - x
+          const height = bottom - y
+
+          if (width <= 0.5 || height <= 0.5) {
+            return null
+          }
+
+          return {
+            x: x - pageBounds.left,
+            y: y - pageBounds.top,
+            width,
+            height,
+          }
+        })
+        .filter((rect): rect is PdfRect => Boolean(rect))
+
+      if (pageSelectionRects.length === 0) {
+        continue
+      }
+
+      const spanRects = Array.from(pageElement.querySelectorAll<HTMLElement>('.pdf-text-layer span'))
+        .filter((span) => {
+          try {
+            return range.intersectsNode(span)
+          } catch {
+            return false
+          }
+        })
+        .map((span) => {
+          const rect = span.getBoundingClientRect()
+
+          return {
+            x: rect.left - pageBounds.left,
+            y: rect.top - pageBounds.top,
+            width: rect.width,
+            height: rect.height,
+          }
+        })
+        .filter((rect) => rect.width > 0.5 && rect.height > 0.5)
+
+      if (spanRects.length === 0) {
+        continue
+      }
+
+      const highlightRects = buildHighlightRectsFromTextIntersections({
+        selectionRects: pageSelectionRects,
+        spanRects,
       })
 
-      rectsByPage.set(pageNumber, [...(rectsByPage.get(pageNumber) ?? []), highlightRect])
+      if (highlightRects.length === 0) {
+        continue
+      }
+
+      rectsByPage.set(pageNumber, [...(rectsByPage.get(pageNumber) ?? []), ...highlightRects])
     }
 
     return rectsByPage
@@ -1614,15 +1631,29 @@ export function PdfViewer() {
 
     updateOverlayStore((currentStore) => {
       let nextStore = currentStore
-      let lastCreatedId: string | null = null
+      const duplicateHighlightIds = new Set<string>()
+
+      for (const [pageIndex, rects] of rectsByPage) {
+        for (const objectId of findHighlightObjectIdsOverlappingRects(currentStore.objects, pageIndex, rects)) {
+          duplicateHighlightIds.add(objectId)
+        }
+      }
+
+      if (duplicateHighlightIds.size > 0) {
+        for (const objectId of duplicateHighlightIds) {
+          nextStore = deleteOverlayObject(nextStore, objectId)
+        }
+        setSelection((currentSelection) =>
+          currentSelection.selectedObjectId && duplicateHighlightIds.has(currentSelection.selectedObjectId)
+            ? clearSelection()
+            : currentSelection,
+        )
+
+        return nextStore
+      }
 
       for (const [pageIndex, rects] of rectsByPage) {
         nextStore = nextStore.addHighlightObject(pageIndex, rects, highlightStyle)
-        lastCreatedId = nextStore.objects[nextStore.objects.length - 1]?.id ?? lastCreatedId
-      }
-
-      if (lastCreatedId) {
-        setSelection(selectOverlayObject(lastCreatedId))
       }
 
       return nextStore
@@ -1842,59 +1873,24 @@ export function PdfViewer() {
       return
     }
 
-    let pointerDownPoint: { x: number; y: number } | null = null
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target
-
-      if (!(target instanceof Element) || !target.closest('.pdf-page-surface')) {
-        return
-      }
-
-      pointerDownPoint = { x: event.clientX, y: event.clientY }
-    }
-
-    const handlePointerUp = (event: PointerEvent) => {
-      const startPoint = pointerDownPoint
-      pointerDownPoint = null
-
+    const handlePointerUp = () => {
       requestAnimationFrame(() => {
         const browserSelection = window.getSelection()
         const hasTextSelection = Boolean(browserSelection && browserSelection.rangeCount > 0 && !browserSelection.isCollapsed)
 
-        if (!hasTextSelection && startPoint) {
-          const target = event.target
-          const pageSurface =
-            target instanceof Element
-              ? target.closest<HTMLElement>('.pdf-page-surface')
-              : null
-          const pageSection = pageSurface?.closest<HTMLElement>('.pdf-page')
-          const pageNumber = Number(pageSection?.dataset.pageNumber)
-
-          if (pageSurface && pageNumber) {
-            const point = clientPointToPagePoint(event.clientX, event.clientY, pageSurface, {
-              scale,
-              width: pageSizes[pageNumber]?.width ?? pageSurface.getBoundingClientRect().width,
-              height: pageSizes[pageNumber]?.height ?? pageSurface.getBoundingClientRect().height,
-            })
-            const hitHighlightId = findHighlightObjectAtPoint(overlayStoreRef.current.objects, pageNumber - 1, point)
-
-            setSelection(hitHighlightId ? selectOverlayObject(hitHighlightId) : clearSelection())
-          } else {
-            setSelection(clearSelection())
-          }
+        if (!hasTextSelection) {
+          return
         }
 
         createHighlightsFromSelection()
       })
     }
 
-    document.addEventListener('pointerdown', handlePointerDown)
     document.addEventListener('pointerup', handlePointerUp)
     return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
       document.removeEventListener('pointerup', handlePointerUp)
     }
-  }, [activeTool, createHighlightsFromSelection, pageSizes, scale])
+  }, [activeTool, createHighlightsFromSelection])
 
   useEffect(() => {
     if (activeTool !== 'select' || (!selection.selectedObjectId && !editingObjectId)) {
@@ -2241,7 +2237,6 @@ export function PdfViewer() {
                     {viewport ? (
                       <HighlightLayer
                         objects={highlightObjects}
-                        selectedObjectId={selection.selectedObjectId}
                         viewport={viewport}
                       />
                     ) : null}
@@ -2299,26 +2294,19 @@ export function PdfViewer() {
         {showInspector ? (
         <aside className="inspector-panel" aria-label="Inspector" data-preserve-empty-text-box="true">
           <div className="inspector-content">
-              {selectedHighlightObject || activeTool === 'highlight' ? (
+              {activeTool === 'highlight' ? (
                 <>
                   <InspectorSection title="색상">
                     <ColorRow
                       label="하이라이트 색상"
-                      value={selectedHighlightObject?.style.color ?? highlightStyle.color}
-                      onChange={(color) => {
-                        if (selectedHighlightObject) {
-                          handleUpdateHighlightStyle(selectedHighlightObject.id, { color })
-                        } else {
-                          setHighlightStyle((current) => ({ ...current, color }))
-                        }
-                      }}
+                      value={highlightStyle.color}
+                      onChange={(color) => setHighlightStyle((current) => ({ ...current, color }))}
                     />
                   </InspectorSection>
                   <InspectorSection title="스타일">
                     <div className="insp-label">불투명도</div>
                     <OpacityRow value={styleOpacity} onChange={handleSelectedOpacityChange} />
                   </InspectorSection>
-                  {selectedHighlightObject ? renderLayerAndGeometry(selectedHighlightObject.frame) : null}
                 </>
               ) : selectedInkObject || activeTool === 'ink' ? (
                 <>

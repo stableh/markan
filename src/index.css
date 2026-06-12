@@ -881,20 +881,6 @@ select:focus-visible {
   pointer-events: none;
 }
 
-.highlight-object-frame {
-  position: absolute;
-  z-index: 4;
-  pointer-events: none;
-}
-
-.highlight-selection-outline {
-  position: absolute;
-  inset: 0;
-  outline: 1.5px dashed var(--accent);
-  outline-offset: 1px;
-  pointer-events: none;
-}
-
 .ink-svg,
 .ink-draft-svg,
 .shape-svg,

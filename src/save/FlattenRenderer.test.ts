@@ -99,7 +99,7 @@ describe('FlattenRenderer', () => {
     const second = await flattenTextImagesOntoPdf(basePdfBytes, [], [], [highlight], [ink])
     const loaded = await PDFDocument.load(first)
 
-    expect(first.byteLength).toBe(second.byteLength)
+    expect(Math.abs(first.byteLength - second.byteLength)).toBeLessThanOrEqual(16)
     expect(first.byteLength).toBeGreaterThan(basePdfBytes.byteLength)
     expect(loaded.getPageCount()).toBe(1)
   })

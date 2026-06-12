@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clearSelection, findHighlightObjectAtPoint, selectOverlayObject } from './SelectionManager'
+import { clearSelection, findHighlightObjectIdsOverlappingRects, selectOverlayObject } from './SelectionManager'
 
 describe('SelectionManager', () => {
   it('tracks selected overlay object id', () => {
@@ -10,58 +10,58 @@ describe('SelectionManager', () => {
     expect(clearSelection()).toEqual({ selectedObjectId: null })
   })
 
-  it('finds the topmost highlight object at a PDF page point', () => {
+  it('finds highlight objects that substantially overlap selected PDF rects', () => {
     expect(
-      findHighlightObjectAtPoint(
+      findHighlightObjectIdsOverlappingRects(
         [
           {
-            id: 'lower-highlight',
-            type: 'highlight',
-            pageIndex: 0,
-            frame: { x: 10, y: 10, width: 90, height: 20 },
-            rects: [{ x: 10, y: 10, width: 90, height: 20 }],
-            style: { color: '#facc15', opacity: 0.45 },
-            zIndex: 1,
-            createdAt: '2026-01-01T00:00:00.000Z',
-            updatedAt: '2026-01-01T00:00:00.000Z',
-          },
-          {
-            id: 'upper-highlight',
+            id: 'highlight-1',
             type: 'highlight',
             pageIndex: 0,
             frame: { x: 20, y: 10, width: 90, height: 20 },
             rects: [{ x: 20, y: 10, width: 90, height: 20 }],
-            style: { color: '#facc15', opacity: 0.45 },
-            zIndex: 2,
+            style: { color: '#facc15', opacity: 1 },
+            zIndex: 1,
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
           },
         ],
         0,
-        { x: 25, y: 15 },
+        [{ x: 22, y: 11, width: 84, height: 18 }],
       ),
-    ).toBe('upper-highlight')
+    ).toEqual(['highlight-1'])
   })
 
-  it('does not hit highlights on other pages or outside their rects', () => {
+  it('does not match small overlaps or highlights on other pages', () => {
     expect(
-      findHighlightObjectAtPoint(
+      findHighlightObjectIdsOverlappingRects(
         [
+          {
+            id: 'highlight-small-overlap',
+            type: 'highlight',
+            pageIndex: 0,
+            frame: { x: 10, y: 10, width: 90, height: 20 },
+            rects: [{ x: 10, y: 10, width: 90, height: 20 }],
+            style: { color: '#facc15', opacity: 1 },
+            zIndex: 1,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
           {
             id: 'highlight-1',
             type: 'highlight',
             pageIndex: 1,
             frame: { x: 10, y: 10, width: 90, height: 20 },
             rects: [{ x: 10, y: 10, width: 90, height: 20 }],
-            style: { color: '#facc15', opacity: 0.45 },
+            style: { color: '#facc15', opacity: 1 },
             zIndex: 1,
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
           },
         ],
         0,
-        { x: 25, y: 15 },
+        [{ x: 80, y: 10, width: 90, height: 20 }],
       ),
-    ).toBeNull()
+    ).toEqual([])
   })
 })

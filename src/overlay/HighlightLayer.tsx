@@ -3,7 +3,6 @@ import type { HighlightOverlayObject } from './OverlayObject'
 
 type HighlightLayerProps = {
   objects: HighlightOverlayObject[]
-  selectedObjectId: string | null
   viewport: PDFPageViewportLike
 }
 
@@ -18,18 +17,9 @@ const colorWithOpacity = (hexColor: string, opacity: number) => {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`
 }
 
-export function HighlightLayer({ objects, selectedObjectId, viewport }: HighlightLayerProps) {
+export function HighlightLayer({ objects, viewport }: HighlightLayerProps) {
   return (
     <>
-      {objects.map((object) => {
-        const frameRect = pdfRectToViewportRect(object.frame, viewport)
-
-        return (
-          <span key={`${object.id}-selection`} className="highlight-object-frame" style={frameRect}>
-            {object.id === selectedObjectId ? <span className="highlight-selection-outline" /> : null}
-          </span>
-        )
-      })}
       {objects.flatMap((object) =>
         object.rects.map((rect, index) => {
           const viewportRect = pdfRectToViewportRect(rect, viewport)

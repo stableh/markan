@@ -1,52 +1,55 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeSelectionRectForHighlight } from './selectionRects'
+import { buildHighlightRectsFromTextIntersections } from './selectionRects'
 
 describe('selection rect normalization', () => {
-  it('trims oversized browser text selection rects mostly from the bottom', () => {
+  it('uses the intersection of browser selection rects and PDF text spans', () => {
     expect(
-      normalizeSelectionRectForHighlight({
-        x: 12,
-        y: 30,
-        width: 180,
-        height: 20,
+      buildHighlightRectsFromTextIntersections({
+        selectionRects: [{ x: 10, y: 8, width: 120, height: 28 }],
+        spanRects: [
+          { x: 16, y: 14, width: 80, height: 16 },
+          { x: 140, y: 14, width: 24, height: 16 },
+        ],
       }),
-    ).toEqual({
-      x: 12,
-      y: 30.8,
-      width: 180,
-      height: 16.8,
-    })
+    ).toEqual([{ x: 15, y: 11.2, width: 81, height: 17.6 }])
   })
 
-  it('does not over-trim large text selection rects', () => {
+  it('keeps partial horizontal selections instead of expanding to the whole span', () => {
     expect(
-      normalizeSelectionRectForHighlight({
-        x: 14,
-        y: 40,
-        width: 240,
-        height: 48,
+      buildHighlightRectsFromTextIntersections({
+        selectionRects: [{ x: 42, y: 10, width: 30, height: 24 }],
+        spanRects: [{ x: 10, y: 14, width: 120, height: 16 }],
       }),
-    ).toEqual({
-      x: 14,
-      y: 40.875,
-      width: 240,
-      height: 44.5,
-    })
+    ).toEqual([{ x: 41, y: 11.2, width: 31, height: 17.6 }])
   })
 
-  it('keeps very short rects stable so small text remains selectable', () => {
+  it('merges same-line adjacent text intersections into a single highlight rect', () => {
     expect(
-      normalizeSelectionRectForHighlight({
-        x: 10,
-        y: 20,
-        width: 80,
-        height: 4,
+      buildHighlightRectsFromTextIntersections({
+        selectionRects: [{ x: 10, y: 10, width: 150, height: 24 }],
+        spanRects: [
+          { x: 12, y: 14, width: 40, height: 16 },
+          { x: 60, y: 14.5, width: 44, height: 15 },
+        ],
       }),
-    ).toEqual({
-      x: 10,
-      y: 20,
-      width: 80,
-      height: 4,
-    })
+    ).toEqual([{ x: 11, y: 11.2, width: 93, height: 17.6 }])
+  })
+
+  it('keeps multi-line selections as separate rects', () => {
+    expect(
+      buildHighlightRectsFromTextIntersections({
+        selectionRects: [
+          { x: 10, y: 10, width: 150, height: 24 },
+          { x: 10, y: 42, width: 140, height: 24 },
+        ],
+        spanRects: [
+          { x: 12, y: 14, width: 80, height: 16 },
+          { x: 12, y: 46, width: 88, height: 16 },
+        ],
+      }),
+    ).toEqual([
+      { x: 11, y: 11.2, width: 81, height: 17.6 },
+      { x: 11, y: 43.2, width: 89, height: 17.6 },
+    ])
   })
 })
