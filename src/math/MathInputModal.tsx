@@ -1,4 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { renderMathToHtml } from './MathRenderer'
 
 type MathInputModalProps = {
@@ -60,22 +68,19 @@ export function MathInputModal({
   }
 
   return (
-    <div
-      className="math-modal-backdrop"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onCancel()
-        }
-      }}
-    >
-      <div
+    <Dialog open onOpenChange={(open) => (!open ? onCancel() : undefined)}>
+      <DialogContent
         className="math-modal"
-        role="dialog"
-        aria-label={mode === 'edit' ? '수식 편집' : '수식 입력'}
         onKeyDown={handleKeyDown}
       >
+        <DialogHeader className="math-modal-header">
+          <DialogTitle>{mode === 'edit' ? '수식 편집' : '수식 입력'}</DialogTitle>
+          <DialogDescription className="sr-only">
+            LaTeX 수식을 입력하고 PDF 위에 배치합니다.
+          </DialogDescription>
+        </DialogHeader>
+
         <div className="math-modal-header">
-          <span>{mode === 'edit' ? '수식 편집' : '수식 입력'}</span>
           <label className="math-modal-display-toggle">
             <input
               type="checkbox"
@@ -112,32 +117,33 @@ export function MathInputModal({
 
         <div className="math-modal-examples">
           {EXAMPLES.map((example) => (
-            <button
+            <Button
               key={example}
               type="button"
+              variant="outline"
+              size="sm"
               className="math-modal-example"
               onClick={() => setLatex(example)}
             >
               {example}
-            </button>
+            </Button>
           ))}
         </div>
 
         <div className="math-modal-actions">
-          <button type="button" className="tool-button" onClick={onCancel}>
+          <Button type="button" variant="ghost" onClick={onCancel}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="tool-button primary"
             onClick={handleApply}
             disabled={!canApply}
             title="Apply (⌘⏎)"
           >
             Apply
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

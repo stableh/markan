@@ -109,7 +109,7 @@ const ELLIPSE_KAPPA = 0.5522847498
  * selectable / movable / deletable in other PDF apps (Preview, Acrobat). The appearance stream
  * guarantees it renders even in viewers that don't synthesize appearances (e.g. Preview).
  *
- * PDFan itself still re-edits via the sidecar metadata, so this is purely for interop. Repeated
+ * MarkAn itself still re-edits via the sidecar metadata, so this is purely for interop. Repeated
  * saves don't accumulate because every save rebuilds annotations from the base PDF.
  */
 const addShapeAnnotation = (

@@ -62,6 +62,7 @@ export function PdfPageCanvas({
           textLayerElement.style.width = `${viewport.width}px`
           textLayerElement.style.height = `${viewport.height}px`
           textLayerElement.style.setProperty('--scale-factor', String(scale))
+          textLayerElement.style.setProperty('--total-scale-factor', String(scale))
         }
 
         renderTask = page.render({
@@ -97,7 +98,6 @@ export function PdfPageCanvas({
 
   return (
     <section className="pdf-page" data-page-number={pageNumber}>
-      <div className="pdf-page-number">Page {pageNumber}</div>
       {error ? <div className="pdf-page-error">{error}</div> : null}
       <div className="pdf-page-surface">
         <canvas ref={canvasRef} aria-label={`Page ${pageNumber}`} />

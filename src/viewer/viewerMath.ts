@@ -1,8 +1,8 @@
 export const MIN_ZOOM = 0.25
 export const MAX_ZOOM = 4
 export const ZOOM_STEP = 0.1
-export const VIEWER_HORIZONTAL_PADDING = 80
-export const FIT_PAGE_VERTICAL_CHROME = 96
+export const VIEWER_HORIZONTAL_PADDING = 48
+export const FIT_PAGE_VERTICAL_CHROME = 48
 
 export type ZoomDirection = 'in' | 'out'
 

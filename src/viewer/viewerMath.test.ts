@@ -20,7 +20,7 @@ describe('viewerMath', () => {
   })
 
   it('calculates fit-width scale from container and page dimensions', () => {
-    expect(resolveFitWidthScale({ containerWidth: 1000, pageWidth: 500 })).toBe(1.84)
+    expect(resolveFitWidthScale({ containerWidth: 1000, pageWidth: 500 })).toBe(1.9)
   })
 
   it('calculates fit-page scale using the limiting dimension', () => {
@@ -31,7 +31,7 @@ describe('viewerMath', () => {
         pageWidth: 500,
         pageHeight: 1000,
       }),
-    ).toBe(0.7)
+    ).toBe(0.75)
   })
 
   it('returns the page whose vertical center is closest to the viewport center', () => {

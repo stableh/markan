@@ -86,12 +86,24 @@ import {
   type MathOverlayStyle,
 } from '@/overlay/OverlayObjectStore'
 import { MathInputModal } from '@/math/MathInputModal'
+import {
+  EditorButton,
+  EditorIconButton,
+  EditorTooltip,
+  InspectorInput,
+  InspectorSelect,
+  InspectorSlider,
+  PanelSeparator,
+  ToolPaletteButton,
+  TooltipProvider,
+} from '@/components/editor/editor-ui'
 import { measureMathSize } from '@/math/measureMath'
 import { renderMathObjectsToImages } from '@/math/mathFlatten'
 import { createBasePdfStore, type BasePdfStore } from '@/save/BasePdfStore'
 import { overlayStoreFromMetadata } from '@/save/MetadataStore'
 import { saveDocument, type SaveMode } from '@/save/SaveManager'
 import { renderRichTextObjectsToImages } from '@/text/richTextFlatten'
+import { normalizeSelectionRectForHighlight } from '@/annotations/selectionRects'
 import { clearSelection, selectOverlayObject } from '@/overlay/SelectionManager'
 import {
   createOverlayHistory,
@@ -154,6 +166,8 @@ type PageRenderedSize = PageBaseSize & {
   pageNumber: number
 }
 
+type SelectionPreviewRectsByPage = Record<number, PdfRect[]>
+
 type ViewerMode = 'custom' | 'actual-size' | 'fit-page' | 'fit-width'
 
 const toPercent = (scale: number) => `${Math.round(scale * 100)}%`
@@ -203,33 +217,22 @@ const defaultInkStyle: InkOverlayStyle = {
 const shapeTools: ShapeKind[] = ['rectangle', 'ellipse', 'line', 'arrow']
 const isShapeTool = (tool: EditorTool): tool is ShapeKind => shapeTools.includes(tool as ShapeKind)
 const createEmptyOverlayHistory = () => createOverlayHistory(createOverlayObjectStore())
-const toolLabels: Record<EditorTool, string> = {
-  select: 'Select',
-  placeholder: 'Placeholder',
-  text: 'Text',
-  image: 'Image',
-  highlight: 'Highlight',
-  ink: 'Ink',
-  rectangle: 'Rectangle',
-  ellipse: 'Ellipse',
-  line: 'Line',
-  arrow: 'Arrow',
-  math: 'Math',
-}
-const toolShortcuts: Partial<Record<EditorTool, string>> = {
-  select: '⌘⌃V',
-  text: '⌘⌃T',
-  image: '⌘⌃I',
-  highlight: '⌘⌃H',
-  ink: '⌘⌃P',
-  rectangle: '⌘⌃R',
-  ellipse: '⌘⌃O',
-  line: '⌘⌃L',
-  arrow: '⌘⌃A',
-  math: '⌘⌃M',
-}
-const getToolTitle = (tool: EditorTool) =>
-  toolShortcuts[tool] ? `${toolLabels[tool]} (${toolShortcuts[tool]})` : toolLabels[tool]
+const editorToolItems: Array<{
+  tool: EditorTool
+  ariaLabel: string
+  icon: ReactNode
+}> = [
+  { tool: 'select', ariaLabel: 'Select tool', icon: <MousePointer2 size={16} /> },
+  { tool: 'text', ariaLabel: 'Text tool', icon: <Type size={16} /> },
+  { tool: 'highlight', ariaLabel: 'Highlight tool', icon: <Highlighter size={16} /> },
+  { tool: 'ink', ariaLabel: 'Ink tool', icon: <Pencil size={16} /> },
+  { tool: 'image', ariaLabel: 'Image tool', icon: <ImagePlus size={16} /> },
+  { tool: 'rectangle', ariaLabel: 'Rectangle tool', icon: <Square size={16} /> },
+  { tool: 'ellipse', ariaLabel: 'Ellipse tool', icon: <Circle size={16} /> },
+  { tool: 'line', ariaLabel: 'Line tool', icon: <Minus size={16} /> },
+  { tool: 'arrow', ariaLabel: 'Arrow tool', icon: <ArrowUpRight size={16} /> },
+  { tool: 'math', ariaLabel: 'Math tool', icon: <Sigma size={16} /> },
+]
 
 const fontFamilyOptions = ['Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Times New Roman', 'Arial']
 const fontWeightOptions = [
@@ -245,6 +248,7 @@ function InspectorSection({ title, children }: { title?: string; children: React
   return (
     <div className="insp-section">
       {title ? <div className="insp-section-title">{title}</div> : null}
+      {title ? <PanelSeparator className="insp-section-separator" /> : null}
       {children}
     </div>
   )
@@ -264,6 +268,7 @@ function ColorRow({
   transparentFallback?: string
 }) {
   const isTransparent = value === 'transparent'
+  const colorValue = isTransparent ? transparentFallback : value
 
   return (
     <div className="insp-row">
@@ -279,11 +284,15 @@ function ColorRow({
           <span>투명</span>
         </label>
       ) : null}
-      <input
+      <InspectorInput
         type="color"
         className="insp-swatch"
-        value={isTransparent ? '#ffffff' : value}
-        disabled={isTransparent}
+        value={colorValue}
+        onClick={() => {
+          if (isTransparent) {
+            onChange(transparentFallback)
+          }
+        }}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
     </div>
@@ -310,7 +319,7 @@ function NumberRow({
   return (
     <label className="insp-row">
       <span className="insp-row-label">{label}</span>
-      <input
+      <InspectorInput
         type="number"
         className="insp-input insp-num"
         value={value}
@@ -329,13 +338,13 @@ function OpacityRow({ value, onChange }: { value: number; onChange: (value: numb
 
   return (
     <div className="insp-row">
-      <input
-        type="range"
+      <InspectorSlider
         className="insp-slider"
         min={5}
         max={100}
-        value={percent}
-        onChange={(event) => onChange(Number(event.currentTarget.value) / 100)}
+        step={1}
+        value={[percent]}
+        onValueChange={([nextValue]) => onChange(nextValue / 100)}
         aria-label="불투명도"
       />
       <span className="insp-value-pill">{percent}%</span>
@@ -354,22 +363,30 @@ function LayerOrderSection({
     <InspectorSection title="레이어 순서">
       <div className="insp-layer-row">
         <div className="insp-layer-buttons">
-          <button type="button" className="tool-button icon-only" onClick={() => onReorder('front')} title="맨 앞으로">
+          <EditorTooltip label="맨 앞으로">
+            <EditorIconButton type="button" onClick={() => onReorder('front')} title="맨 앞으로">
             <ArrowUpToLine size={15} />
-          </button>
-          <button type="button" className="tool-button icon-only" onClick={() => onReorder('forward')} title="앞으로">
+            </EditorIconButton>
+          </EditorTooltip>
+          <EditorTooltip label="앞으로">
+            <EditorIconButton type="button" onClick={() => onReorder('forward')} title="앞으로">
             <ArrowUp size={15} />
-          </button>
-          <button type="button" className="tool-button icon-only" onClick={() => onReorder('backward')} title="뒤로">
+            </EditorIconButton>
+          </EditorTooltip>
+          <EditorTooltip label="뒤로">
+            <EditorIconButton type="button" onClick={() => onReorder('backward')} title="뒤로">
             <ArrowDown size={15} />
-          </button>
-          <button type="button" className="tool-button icon-only" onClick={() => onReorder('back')} title="맨 뒤로">
+            </EditorIconButton>
+          </EditorTooltip>
+          <EditorTooltip label="맨 뒤로">
+            <EditorIconButton type="button" onClick={() => onReorder('back')} title="맨 뒤로">
             <ArrowDownToLine size={15} />
-          </button>
+            </EditorIconButton>
+          </EditorTooltip>
         </div>
-        <button type="button" className="insp-delete-btn" onClick={onDelete} title="삭제 (Delete)" aria-label="삭제">
+        <EditorIconButton type="button" className="insp-delete-btn" onClick={onDelete} title="삭제 (Delete)" aria-label="삭제">
           <Trash2 size={15} />
-        </button>
+        </EditorIconButton>
       </div>
     </InspectorSection>
   )
@@ -397,7 +414,7 @@ function GeometrySection({
       <div className="insp-geo-grid">
         <label className="insp-geo-field">
           <span>X</span>
-          <input
+          <InspectorInput
             type="number"
             className="insp-input"
             value={round(frame.x)}
@@ -406,7 +423,7 @@ function GeometrySection({
         </label>
         <label className="insp-geo-field">
           <span>Y</span>
-          <input
+          <InspectorInput
             type="number"
             className="insp-input"
             value={round(frame.y)}
@@ -415,7 +432,7 @@ function GeometrySection({
         </label>
         <label className="insp-geo-field">
           <span>W</span>
-          <input
+          <InspectorInput
             type="number"
             className="insp-input"
             min={1}
@@ -426,7 +443,7 @@ function GeometrySection({
         </label>
         <label className="insp-geo-field">
           <span>H</span>
-          <input
+          <InspectorInput
             type="number"
             className="insp-input"
             min={1}
@@ -437,7 +454,7 @@ function GeometrySection({
         </label>
       </div>
       <label className="insp-rotation insp-row">
-        <input
+        <InspectorInput
           type="number"
           className="insp-input"
           value={rotation}
@@ -462,6 +479,10 @@ export function PdfViewer() {
   const [highlightStyle, setHighlightStyle] = useState<HighlightOverlayStyle>(defaultHighlightStyle)
   const [inkStyle, setInkStyle] = useState<InkOverlayStyle>(defaultInkStyle)
   const [shapeStyle, setShapeStyle] = useState<ShapeOverlayStyle>(defaultShapeOverlayStyle)
+  const lastShapeFillColorRef = useRef('#ffffff')
+  const [lastTextBackgroundColor, setLastTextBackgroundColor] = useState('#ffffff')
+  const [lastTextBorderColor, setLastTextBorderColor] = useState('#2563eb')
+  const [lastMathBackgroundColor, setLastMathBackgroundColor] = useState('#ffffff')
   // Last-used styles, remembered so each new object reuses the previous settings
   // (e.g. a transparent background stays transparent for the next one).
   const [textStyle, setTextStyle] = useState<TextOverlayStyle>(defaultTextOverlayStyle)
@@ -481,6 +502,7 @@ export function PdfViewer() {
   const [overlayStore, setOverlayStore] = useState(createEmptyOverlayStore)
   const overlayStoreRef = useRef(overlayStore)
   const [selection, setSelection] = useState(clearSelection)
+  const [selectionPreviewRectsByPage, setSelectionPreviewRectsByPage] = useState<SelectionPreviewRectsByPage>({})
   const [editingObjectId, setEditingObjectId] = useState<string | null>(null)
   const [activeTextEditor, setActiveTextEditor] = useState<RichTextEditorHandle | null>(null)
   const [textEditorState, setTextEditorState] = useState<RichTextEditorState>(createInactiveTextEditorState)
@@ -508,6 +530,11 @@ export function PdfViewer() {
   const activeShapeKind = selectedShapeObject?.kind ?? (isShapeTool(activeTool) ? activeTool : null)
   const shapeInspectorStyle = selectedShapeObject?.style ?? shapeStyle
   const shapeSupportsFill = activeShapeKind === 'rectangle' || activeShapeKind === 'ellipse'
+  useEffect(() => {
+    if (shapeInspectorStyle.fillColor !== null) {
+      lastShapeFillColorRef.current = shapeInspectorStyle.fillColor
+    }
+  }, [shapeInspectorStyle.fillColor])
   const canEditSelectedSize =
     !!selectedObject &&
     (selectedObject.type === 'image' ||
@@ -568,7 +595,7 @@ export function PdfViewer() {
     }
 
     setError(message)
-    void window.pdfan?.showErrorDialog(title, message)
+    void window.markan?.showErrorDialog(title, message)
   }, [])
 
   const clearEditingState = useCallback(() => {
@@ -637,7 +664,7 @@ export function PdfViewer() {
   }, [pageNumbers.length])
 
   const handleOpenPdf = useCallback(async () => {
-    if (!window.pdfan) {
+    if (!window.markan) {
       setError('Electron bridge unavailable')
       return
     }
@@ -646,7 +673,7 @@ export function PdfViewer() {
     setError(null)
 
     try {
-      const result = await window.pdfan.openPdf()
+      const result = await window.markan.openPdf()
 
       if (result.canceled) {
         return
@@ -679,7 +706,7 @@ export function PdfViewer() {
       setScale(1)
       if (result.metadataWarning) {
         setError(result.metadataWarning)
-        void window.pdfan?.showErrorDialog('Metadata Warning', result.metadataWarning)
+        void window.markan?.showErrorDialog('Metadata Warning', result.metadataWarning)
       }
       requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: 0 }))
     } catch (openError) {
@@ -714,7 +741,7 @@ export function PdfViewer() {
   }, [currentPage, pageBaseSize, pageSizes, scale])
 
   const handleImportImage = useCallback(async () => {
-    if (!window.pdfan || !loadedPdf) {
+    if (!window.markan || !loadedPdf) {
       setError('Image import unavailable')
       setActiveToolState('select')
       return
@@ -732,7 +759,7 @@ export function PdfViewer() {
     setActiveToolState('image')
 
     try {
-      const result = await window.pdfan.openImage()
+      const result = await window.markan.openImage()
 
       if (result.canceled) {
         setActiveToolState('select')
@@ -775,6 +802,8 @@ export function PdfViewer() {
 
   const handleToolChange = useCallback(
     (nextTool: EditorTool) => {
+      setSelectionPreviewRectsByPage({})
+
       if (nextTool === 'image') {
         void handleImportImage()
         return
@@ -815,7 +844,7 @@ export function PdfViewer() {
   }, [textStyle, updateOverlayStore])
 
   const handlePasteFromClipboard = useCallback(async () => {
-    const bridge = window.pdfan
+    const bridge = window.markan
 
     if (!bridge || !loadedPdf) {
       return
@@ -1317,13 +1346,30 @@ export function PdfViewer() {
     return nextStore
   }, [activeTextEditor, commitOverlayStore, editingObjectId, overlayStore])
 
+  const handleClearSelection = useCallback(() => {
+    if (editingObjectId && activeTextEditor) {
+      const contentHtml = activeTextEditor.commit()
+
+      if (contentHtml !== null) {
+        const nextStore = isTextContentEmpty(contentHtml)
+          ? deleteEmptyTextObject(overlayStore, editingObjectId)
+          : updateTextObjectContent(overlayStore, editingObjectId, contentHtml)
+
+        commitOverlayStore(nextStore)
+      }
+    }
+
+    clearEditingState()
+    setSelection(clearSelection())
+  }, [activeTextEditor, clearEditingState, commitOverlayStore, editingObjectId, overlayStore])
+
   const handleSave = useCallback(
     async (mode: SaveMode) => {
       if (saving) {
         return false
       }
 
-      const bridge = window.pdfan
+      const bridge = window.markan
       const basePdfStore = basePdfStoreRef.current
 
       if (!bridge || !loadedPdf || !basePdfStore) {
@@ -1383,7 +1429,7 @@ export function PdfViewer() {
       return true
     }
 
-    const decision = await window.pdfan?.confirmUnsaved()
+    const decision = await window.markan?.confirmUnsaved()
 
     if (decision === 'cancel' || !decision) {
       return false
@@ -1409,8 +1455,8 @@ export function PdfViewer() {
       return
     }
 
-    await window.pdfan?.setDirtyState(false)
-    await window.pdfan?.closeWindow()
+    await window.markan?.setDirtyState(false)
+    await window.markan?.closeWindow()
   }, [confirmDiscardOrSaveChanges])
 
   const restoreHistorySelection = useCallback((history: OverlayHistory) => {
@@ -1467,14 +1513,12 @@ export function PdfViewer() {
     [currentPage, loadedPdf, navigateToPage],
   )
 
-  const createHighlightsFromSelection = useCallback(() => {
-    const selection = window.getSelection()
-
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-      return
+  const getSelectionRectsByPage = useCallback((browserSelection: Selection) => {
+    if (browserSelection.rangeCount === 0 || browserSelection.isCollapsed) {
+      return new Map<number, PdfRect[]>()
     }
 
-    const range = selection.getRangeAt(0)
+    const range = browserSelection.getRangeAt(0)
     const clientRects = Array.from(range.getClientRects()).filter(
       (rect) => rect.width > 0.5 && rect.height > 0.5,
     )
@@ -1509,29 +1553,58 @@ export function PdfViewer() {
       }
 
       const pageBounds = pageElement.getBoundingClientRect()
-      const pdfRect = viewportRectToPdfRect(
-        {
-          x: clientRect.left - pageBounds.left,
-          y: clientRect.top - pageBounds.top,
-          width: clientRect.width,
-          height: clientRect.height,
-        },
-        {
+      const highlightRect = normalizeSelectionRectForHighlight({
+        x: clientRect.left - pageBounds.left,
+        y: clientRect.top - pageBounds.top,
+        width: clientRect.width,
+        height: clientRect.height,
+      })
+
+      rectsByPage.set(pageNumber, [...(rectsByPage.get(pageNumber) ?? []), highlightRect])
+    }
+
+    return rectsByPage
+  }, [])
+
+  const createHighlightsFromSelection = useCallback(() => {
+    const browserSelection = window.getSelection()
+
+    if (!browserSelection || browserSelection.rangeCount === 0 || browserSelection.isCollapsed) {
+      return
+    }
+
+    const selectionRectsByPage = getSelectionRectsByPage(browserSelection)
+    const rectsByPage = new Map<number, PdfRect[]>()
+
+    for (const [pageNumber, highlightRects] of selectionRectsByPage) {
+      const pageBounds = scrollRef.current
+        ?.querySelector<HTMLElement>(`.pdf-page[data-page-number="${pageNumber}"] .pdf-page-surface`)
+        ?.getBoundingClientRect()
+
+      if (!pageBounds) {
+        continue
+      }
+
+      const pdfRects = highlightRects
+        .map((highlightRect) =>
+          viewportRectToPdfRect(highlightRect, {
           scale,
           width: pageSizes[pageNumber]?.width ?? pageBounds.width,
           height: pageSizes[pageNumber]?.height ?? pageBounds.height,
-        },
-      )
+          }),
+        )
+        .filter((pdfRect) => pdfRect.width > 0 && pdfRect.height > 0)
 
-      if (pdfRect.width <= 0 || pdfRect.height <= 0) {
+      if (pdfRects.length === 0) {
         continue
       }
 
       const pageIndex = pageNumber - 1
-      rectsByPage.set(pageIndex, [...(rectsByPage.get(pageIndex) ?? []), pdfRect])
+      rectsByPage.set(pageIndex, [...(rectsByPage.get(pageIndex) ?? []), ...pdfRects])
     }
 
-    selection.removeAllRanges()
+    browserSelection.removeAllRanges()
+    setSelectionPreviewRectsByPage({})
 
     if (rectsByPage.size === 0) {
       return
@@ -1552,7 +1625,7 @@ export function PdfViewer() {
 
       return nextStore
     })
-  }, [highlightStyle, pageSizes, scale, updateOverlayStore])
+  }, [getSelectionRectsByPage, highlightStyle, pageSizes, scale, updateOverlayStore])
 
   const handleViewerCommand = useCallback(
     (command: ViewerCommand) => {
@@ -1675,7 +1748,7 @@ export function PdfViewer() {
   }, [loadedPdf])
 
   useEffect(() => {
-    const bridge = window.pdfan
+    const bridge = window.markan
 
     if (!bridge) {
       return
@@ -1693,7 +1766,7 @@ export function PdfViewer() {
   }, [handleOpenPdfWithPrompt, handleViewerCommand])
 
   useEffect(() => {
-    void window.pdfan?.setDirtyState(overlayStore.isDirty)
+    void window.markan?.setDirtyState(overlayStore.isDirty)
   }, [overlayStore.isDirty])
 
   useEffect(() => {
@@ -1710,19 +1783,122 @@ export function PdfViewer() {
     requestAnimationFrame(updateCurrentPageFromScroll)
   }, [scale, pageSizes, updateCurrentPageFromScroll])
 
+  const updateSelectionPreview = useCallback(() => {
+    if (activeTool !== 'select' && activeTool !== 'highlight') {
+      setSelectionPreviewRectsByPage({})
+      return
+    }
+
+    const browserSelection = window.getSelection()
+
+    if (!browserSelection || browserSelection.rangeCount === 0 || browserSelection.isCollapsed) {
+      setSelectionPreviewRectsByPage({})
+      return
+    }
+
+    const rectsByPage = getSelectionRectsByPage(browserSelection)
+    const nextRectsByPage: SelectionPreviewRectsByPage = {}
+
+    for (const [pageNumber, rects] of rectsByPage) {
+      if (rects.length > 0) {
+        nextRectsByPage[pageNumber] = rects
+      }
+    }
+
+    setSelectionPreviewRectsByPage(nextRectsByPage)
+  }, [activeTool, getSelectionRectsByPage])
+
+  useEffect(() => {
+    if (activeTool !== 'select' && activeTool !== 'highlight') {
+      return
+    }
+
+    let frameId: number | null = null
+    const handleSelectionChange = () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId)
+      }
+
+      frameId = requestAnimationFrame(() => {
+        frameId = null
+        updateSelectionPreview()
+      })
+    }
+
+    document.addEventListener('selectionchange', handleSelectionChange)
+    return () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId)
+      }
+      document.removeEventListener('selectionchange', handleSelectionChange)
+    }
+  }, [activeTool, updateSelectionPreview])
+
 
   useEffect(() => {
     if (activeTool !== 'highlight') {
       return
     }
 
-    const handlePointerUp = () => {
-      requestAnimationFrame(createHighlightsFromSelection)
+    let pointerDownPoint: { x: number; y: number } | null = null
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+
+      if (!(target instanceof Element) || !target.closest('.pdf-page-surface')) {
+        return
+      }
+
+      pointerDownPoint = { x: event.clientX, y: event.clientY }
     }
 
+    const handlePointerUp = () => {
+      const startPoint = pointerDownPoint
+      pointerDownPoint = null
+
+      requestAnimationFrame(() => {
+        const selection = window.getSelection()
+        const hasTextSelection = Boolean(selection && selection.rangeCount > 0 && !selection.isCollapsed)
+
+        if (!hasTextSelection && startPoint) {
+          setSelection(clearSelection())
+        }
+
+        createHighlightsFromSelection()
+      })
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
     document.addEventListener('pointerup', handlePointerUp)
-    return () => document.removeEventListener('pointerup', handlePointerUp)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('pointerup', handlePointerUp)
+    }
   }, [activeTool, createHighlightsFromSelection])
+
+  useEffect(() => {
+    if (activeTool !== 'select' || (!selection.selectedObjectId && !editingObjectId)) {
+      return
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+
+      if (!(target instanceof Element) || !target.closest('.pdf-page-surface')) {
+        return
+      }
+
+      if (target.closest('.overlay-object, .resize-handle')) {
+        return
+      }
+
+      handleClearSelection()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true)
+    }
+  }, [activeTool, editingObjectId, handleClearSelection, selection.selectedObjectId])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1827,9 +2003,10 @@ export function PdfViewer() {
   )
   const titleBarText = loadedPdf
     ? `${overlayStore.isDirty ? '*' : ''}${loadedPdf.fileName}`
-    : 'PDFan'
+    : 'MarkAn'
 
   return (
+    <TooltipProvider>
     <div className="app-shell">
       <header className="app-header">
         <div className="title-bar">
@@ -1838,206 +2015,91 @@ export function PdfViewer() {
           </div>
 
           <div className="title-bar-right">
-            <button
-              type="button"
-              className="tool-button icon-only"
-              title="검색 (준비 중)"
-              aria-label="검색"
-              disabled
-            >
+            <EditorIconButton type="button" aria-label="검색" disabled>
               <Search size={16} />
-            </button>
+            </EditorIconButton>
           </div>
         </div>
 
         <div className="tool-row">
           <div className="toolbar-group toolbar-file-group" aria-label="File">
-            <button
+            <EditorIconButton
               type="button"
-              className="tool-button primary icon-only"
+              className="primary"
               onClick={() => void handleOpenPdfWithPrompt()}
-              title="Open PDF (⌘O)"
               aria-label="Open PDF"
             >
-              <FolderOpen size={20} />
-            </button>
-            <button
+              <FolderOpen size={16} />
+            </EditorIconButton>
+            <EditorIconButton
               type="button"
-              className="tool-button icon-only"
               onClick={() => void handleSave('direct')}
-              title="Save (⌘S)"
               aria-label="Save"
               disabled={!loadedPdf || saving}
             >
-              <Save size={18} />
-            </button>
-            <button
+              <Save size={16} />
+            </EditorIconButton>
+            <EditorIconButton
               type="button"
-              className="tool-button icon-only"
               onClick={() => void handleSave('save-as')}
-              title="Save As (⇧⌘S)"
               aria-label="Save As"
               disabled={!loadedPdf || saving}
             >
-              <FileUp size={18} />
-            </button>
+              <FileUp size={16} />
+            </EditorIconButton>
           </div>
 
           <div className="toolbar-group" aria-label="Editor tools">
-          <button
-            type="button"
-            className={`tool-button tool-palette-button ${activeTool === 'select' ? 'tool-button-active' : ''}`}
-            onClick={() => handleToolChange('select')}
-            title={getToolTitle('select')}
-            aria-label="Select tool"
-            disabled={!loadedPdf}
-          >
-            <MousePointer2 size={16} />
-            <span>Select</span>
-          </button>
-          <button
-            type="button"
-            className={`tool-button tool-palette-button ${activeTool === 'text' ? 'tool-button-active' : ''}`}
-            onClick={() => handleToolChange('text')}
-            title={getToolTitle('text')}
-            aria-label="Text tool"
-            disabled={!loadedPdf}
-          >
-            <Type size={16} />
-            <span>Text</span>
-          </button>
-          <button
-            type="button"
-            className={`tool-button tool-palette-button ${activeTool === 'highlight' ? 'tool-button-active' : ''}`}
-            onClick={() => handleToolChange('highlight')}
-            title={getToolTitle('highlight')}
-            aria-label="Highlight tool"
-            disabled={!loadedPdf}
-          >
-            <Highlighter size={16} />
-            <span>Highlight</span>
-          </button>
-          <button
-            type="button"
-            className={`tool-button tool-palette-button ${activeTool === 'ink' ? 'tool-button-active' : ''}`}
-            onClick={() => handleToolChange('ink')}
-            title={getToolTitle('ink')}
-            aria-label="Ink tool"
-            disabled={!loadedPdf}
-          >
-            <Pencil size={16} />
-            <span>Pen</span>
-          </button>
-          <button
-            type="button"
-            className={`tool-button tool-palette-button ${activeTool === 'image' ? 'tool-button-active' : ''}`}
-            onClick={() => handleToolChange('image')}
-            title={getToolTitle('image')}
-            aria-label="Image tool"
-            disabled={!loadedPdf}
-          >
-            <ImagePlus size={16} />
-            <span>Image</span>
-          </button>
-          <button
-            type="button"
-            className={`tool-button tool-palette-button ${activeTool === 'rectangle' ? 'tool-button-active' : ''}`}
-            onClick={() => handleToolChange('rectangle')}
-            title={getToolTitle('rectangle')}
-            aria-label="Rectangle tool"
-            disabled={!loadedPdf}
-          >
-            <Square size={15} />
-            <span>Rectangle</span>
-          </button>
-          <button
-            type="button"
-            className={`tool-button tool-palette-button ${activeTool === 'ellipse' ? 'tool-button-active' : ''}`}
-            onClick={() => handleToolChange('ellipse')}
-            title={getToolTitle('ellipse')}
-            aria-label="Ellipse tool"
-            disabled={!loadedPdf}
-          >
-            <Circle size={15} />
-            <span>Ellipse</span>
-          </button>
-          <button
-            type="button"
-            className={`tool-button tool-palette-button ${activeTool === 'line' ? 'tool-button-active' : ''}`}
-            onClick={() => handleToolChange('line')}
-            title={getToolTitle('line')}
-            aria-label="Line tool"
-            disabled={!loadedPdf}
-          >
-            <Minus size={16} />
-            <span>Line</span>
-          </button>
-          <button
-            type="button"
-            className={`tool-button tool-palette-button ${activeTool === 'arrow' ? 'tool-button-active' : ''}`}
-            onClick={() => handleToolChange('arrow')}
-            title={getToolTitle('arrow')}
-            aria-label="Arrow tool"
-            disabled={!loadedPdf}
-          >
-            <ArrowUpRight size={16} />
-            <span>Arrow</span>
-          </button>
-          <button
-            type="button"
-            className={`tool-button tool-palette-button ${activeTool === 'math' ? 'tool-button-active' : ''}`}
-            onClick={() => handleToolChange('math')}
-            title={getToolTitle('math')}
-            aria-label="Math tool"
-            disabled={!loadedPdf}
-          >
-            <Sigma size={16} />
-            <span>Math</span>
-          </button>
+            {editorToolItems.map((item) => (
+              <ToolPaletteButton
+                key={item.tool}
+                type="button"
+                active={activeTool === item.tool}
+                onClick={() => handleToolChange(item.tool)}
+                aria-label={item.ariaLabel}
+                disabled={!loadedPdf}
+              >
+                {item.icon}
+              </ToolPaletteButton>
+            ))}
           </div>
 
           <div className="tool-row-right">
             <div className="toolbar-group" aria-label="Page view mode">
-              <button
+              <EditorIconButton
                 type="button"
-                className="tool-button icon-only"
                 onClick={() => handleViewerCommand('fit-page')}
-                title="Fit Page"
                 aria-label="Fit Page"
                 disabled={!loadedPdf}
               >
                 <Maximize size={16} />
-              </button>
-              <button
+              </EditorIconButton>
+              <EditorIconButton
                 type="button"
-                className="tool-button icon-only"
                 onClick={() => handleViewerCommand('fit-width')}
-                title="Fit Width"
                 aria-label="Fit Width"
                 disabled={!loadedPdf}
               >
                 <ChevronsUpDown size={16} className="rotate-90" />
-              </button>
-              <button
+              </EditorIconButton>
+              <EditorIconButton
                 type="button"
-                className={`tool-button icon-only ${pageViewMode === 'continuous' ? 'tool-button-active' : ''}`}
+                active={pageViewMode === 'continuous'}
                 onClick={() => handleViewerCommand('continuous-scroll')}
-                title="Continuous Scroll (⌘⌃1)"
                 aria-label="Continuous Scroll"
                 disabled={!loadedPdf}
               >
                 <LayoutList size={16} />
-              </button>
-              <button
+              </EditorIconButton>
+              <EditorIconButton
                 type="button"
-                className={`tool-button icon-only ${pageViewMode === 'single' ? 'tool-button-active' : ''}`}
+                active={pageViewMode === 'single'}
                 onClick={() => handleViewerCommand('single-page')}
-                title="Single Page (⌘⌃2)"
                 aria-label="Single Page"
                 disabled={!loadedPdf}
               >
                 <Rows3 size={16} />
-              </button>
+              </EditorIconButton>
             </div>
           </div>
         </div>
@@ -2127,11 +2189,11 @@ export function PdfViewer() {
           {!loadedPdf ? (
             <div className="empty-state">
               <img className="empty-state-logo" src="./logo/logo.svg" alt="" aria-hidden="true" />
-              <h1>PDFan</h1>
-              <button type="button" className="tool-button primary" onClick={() => void handleOpenPdfWithPrompt()}>
+              <h1>MarkAn</h1>
+              <EditorButton type="button" className="primary" onClick={() => void handleOpenPdfWithPrompt()}>
                 <FolderOpen size={18} />
                 <span>Open PDF</span>
-              </button>
+              </EditorButton>
             </div>
           ) : (
             <div className={`page-stack page-stack-${pageViewMode}`}>
@@ -2143,6 +2205,22 @@ export function PdfViewer() {
                   scale={scale}
                   onSizeChange={handlePageSizeChange}
                 >
+                  {selectionPreviewRectsByPage[pageNumber]?.length ? (
+                    <div className="selection-preview-layer" aria-hidden="true">
+                      {selectionPreviewRectsByPage[pageNumber].map((rect, index) => (
+                        <span
+                          key={`${pageNumber}-${index}-${rect.x}-${rect.y}`}
+                          className="selection-preview-rect"
+                          style={{
+                            left: rect.x,
+                            top: rect.y,
+                            width: rect.width,
+                            height: rect.height,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                   {pageSizes[pageNumber] ? (
                     <OverlayLayer
                       activeTool={activeTool}
@@ -2157,7 +2235,7 @@ export function PdfViewer() {
                         width: pageSizes[pageNumber].width,
                         height: pageSizes[pageNumber].height,
                       }}
-                      onClearSelection={() => setSelection(clearSelection())}
+                      onClearSelection={handleClearSelection}
                       onCreatePlaceholder={handleCreatePlaceholder}
                       onCreateText={handleCreateText}
                       onCreateInk={handleCreateInk}
@@ -2260,7 +2338,7 @@ export function PdfViewer() {
                             checked={shapeInspectorStyle.fillColor === null}
                             onChange={(event) =>
                               handleShapeStyleChange({
-                                fillColor: event.currentTarget.checked ? null : '#ffffff',
+                                fillColor: event.currentTarget.checked ? null : lastShapeFillColorRef.current,
                               })
                             }
                           />
@@ -2268,7 +2346,10 @@ export function PdfViewer() {
                         <ColorRow
                           label="채움 색상"
                           value={shapeInspectorStyle.fillColor ?? '#ffffff'}
-                          onChange={(fillColor) => handleShapeStyleChange({ fillColor })}
+                          onChange={(fillColor) => {
+                            lastShapeFillColorRef.current = fillColor
+                            handleShapeStyleChange({ fillColor })
+                          }}
                         />
                       </>
                     ) : null}
@@ -2283,7 +2364,7 @@ export function PdfViewer() {
                     />
                     <label className="insp-row">
                       <span className="insp-row-label">선 스타일</span>
-                      <select
+                      <InspectorSelect
                         className="insp-select"
                         value={shapeInspectorStyle.lineStyle}
                         onChange={(event) =>
@@ -2294,7 +2375,7 @@ export function PdfViewer() {
                       >
                         <option value="solid">실선</option>
                         <option value="dashed">점선</option>
-                      </select>
+                      </InspectorSelect>
                     </label>
                     <div className="insp-label">불투명도</div>
                     <OpacityRow value={styleOpacity} onChange={handleSelectedOpacityChange} />
@@ -2313,8 +2394,9 @@ export function PdfViewer() {
                 <>
                   <InspectorSection>
                     <div className="insp-label">타이포</div>
-                    <select
+                    <InspectorSelect
                       className="insp-select insp-field-full"
+                      iconClassName="insp-font-select-chevron"
                       value={selectedTextObject.style.fontFamily}
                       onChange={(event) =>
                         handleUpdateTextStyle(selectedTextObject.id, { fontFamily: event.currentTarget.value })
@@ -2326,9 +2408,9 @@ export function PdfViewer() {
                           {family}
                         </option>
                       ))}
-                    </select>
+                    </InspectorSelect>
                     <div className="insp-type-row">
-                      <select
+                      <InspectorSelect
                         className="insp-select"
                         value={selectedTextObject.style.fontWeight}
                         onChange={(event) =>
@@ -2343,8 +2425,8 @@ export function PdfViewer() {
                             {weight.label}
                           </option>
                         ))}
-                      </select>
-                      <input
+                      </InspectorSelect>
+                      <InspectorInput
                         type="number"
                         className="insp-input insp-num"
                         min={8}
@@ -2357,7 +2439,7 @@ export function PdfViewer() {
                         }
                         aria-label="글자 크기"
                       />
-                      <input
+                      <InspectorInput
                         type="color"
                         className="insp-swatch"
                         value={selectedTextObject.style.textColor}
@@ -2370,9 +2452,9 @@ export function PdfViewer() {
                       />
                     </div>
                     <div className="insp-btn-row" aria-label="텍스트 서식">
-                      <button
+                      <EditorIconButton
                         type="button"
-                        className={`tool-button icon-only ${textEditorState.bold ? 'tool-button-active' : ''}`}
+                        active={textEditorState.bold}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => activeTextEditor?.toggleBold()}
                         title="Bold"
@@ -2380,10 +2462,10 @@ export function PdfViewer() {
                         disabled={!activeTextEditor}
                       >
                         <Bold size={15} />
-                      </button>
-                      <button
+                      </EditorIconButton>
+                      <EditorIconButton
                         type="button"
-                        className={`tool-button icon-only ${textEditorState.italic ? 'tool-button-active' : ''}`}
+                        active={textEditorState.italic}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => activeTextEditor?.toggleItalic()}
                         title="Italic"
@@ -2391,10 +2473,10 @@ export function PdfViewer() {
                         disabled={!activeTextEditor}
                       >
                         <Italic size={15} />
-                      </button>
-                      <button
+                      </EditorIconButton>
+                      <EditorIconButton
                         type="button"
-                        className={`tool-button icon-only ${textEditorState.underline ? 'tool-button-active' : ''}`}
+                        active={textEditorState.underline}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => activeTextEditor?.toggleUnderline()}
                         title="Underline"
@@ -2402,10 +2484,10 @@ export function PdfViewer() {
                         disabled={!activeTextEditor}
                       >
                         <Underline size={15} />
-                      </button>
-                      <button
+                      </EditorIconButton>
+                      <EditorIconButton
                         type="button"
-                        className={`tool-button icon-only ${textEditorState.strike ? 'tool-button-active' : ''}`}
+                        active={textEditorState.strike}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => activeTextEditor?.toggleStrike()}
                         title="Strikethrough"
@@ -2413,12 +2495,12 @@ export function PdfViewer() {
                         disabled={!activeTextEditor}
                       >
                         <Strikethrough size={15} />
-                      </button>
+                      </EditorIconButton>
                     </div>
                     <div className="insp-btn-row" aria-label="목록 및 들여쓰기">
-                      <button
+                      <EditorIconButton
                         type="button"
-                        className={`tool-button icon-only ${textEditorState.bulletList ? 'tool-button-active' : ''}`}
+                        active={textEditorState.bulletList}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => activeTextEditor?.toggleBulletList()}
                         title="Bullet list"
@@ -2426,10 +2508,10 @@ export function PdfViewer() {
                         disabled={!activeTextEditor}
                       >
                         <List size={16} />
-                      </button>
-                      <button
+                      </EditorIconButton>
+                      <EditorIconButton
                         type="button"
-                        className={`tool-button icon-only ${textEditorState.orderedList ? 'tool-button-active' : ''}`}
+                        active={textEditorState.orderedList}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => activeTextEditor?.toggleOrderedList()}
                         title="Numbered list"
@@ -2437,10 +2519,9 @@ export function PdfViewer() {
                         disabled={!activeTextEditor}
                       >
                         <ListOrdered size={16} />
-                      </button>
-                      <button
+                      </EditorIconButton>
+                      <EditorIconButton
                         type="button"
-                        className="tool-button icon-only"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => activeTextEditor?.outdent()}
                         title="Outdent"
@@ -2448,10 +2529,9 @@ export function PdfViewer() {
                         disabled={!activeTextEditor}
                       >
                         <IndentDecrease size={16} />
-                      </button>
-                      <button
+                      </EditorIconButton>
+                      <EditorIconButton
                         type="button"
-                        className="tool-button icon-only"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => activeTextEditor?.indent()}
                         title="Indent"
@@ -2459,45 +2539,44 @@ export function PdfViewer() {
                         disabled={!activeTextEditor}
                       >
                         <IndentIncrease size={16} />
-                      </button>
+                      </EditorIconButton>
                     </div>
                     <div className="insp-btn-row" aria-label="텍스트 정렬">
-                      <button
+                      <EditorIconButton
                         type="button"
-                        className={`tool-button icon-only ${selectedTextObject.style.textAlign === 'left' ? 'tool-button-active' : ''}`}
+                        active={selectedTextObject.style.textAlign === 'left'}
                         onClick={() => handleTextAlign('left')}
                         title="왼쪽 정렬"
                         aria-label="왼쪽 정렬"
                       >
                         <AlignLeft size={15} />
-                      </button>
-                      <button
+                      </EditorIconButton>
+                      <EditorIconButton
                         type="button"
-                        className={`tool-button icon-only ${selectedTextObject.style.textAlign === 'center' ? 'tool-button-active' : ''}`}
+                        active={selectedTextObject.style.textAlign === 'center'}
                         onClick={() => handleTextAlign('center')}
                         title="가운데 정렬"
                         aria-label="가운데 정렬"
                       >
                         <AlignCenter size={15} />
-                      </button>
-                      <button
+                      </EditorIconButton>
+                      <EditorIconButton
                         type="button"
-                        className={`tool-button icon-only ${selectedTextObject.style.textAlign === 'right' ? 'tool-button-active' : ''}`}
+                        active={selectedTextObject.style.textAlign === 'right'}
                         onClick={() => handleTextAlign('right')}
                         title="오른쪽 정렬"
                         aria-label="오른쪽 정렬"
                       >
                         <AlignRight size={15} />
-                      </button>
-                      <button
+                      </EditorIconButton>
+                      <EditorIconButton
                         type="button"
-                        className="tool-button icon-only"
                         title="양쪽 정렬 (준비 중)"
                         aria-label="양쪽 정렬"
                         disabled
                       >
                         <AlignJustify size={15} />
-                      </button>
+                      </EditorIconButton>
                     </div>
                   </InspectorSection>
                   <InspectorSection title="색상">
@@ -2505,17 +2584,29 @@ export function PdfViewer() {
                       label="배경"
                       value={selectedTextObject.style.backgroundColor}
                       allowTransparent
-                      transparentFallback="#ffffff"
-                      onChange={(backgroundColor) =>
+                      transparentFallback={lastTextBackgroundColor}
+                      onChange={(backgroundColor) => {
+                        if (backgroundColor === 'transparent' && selectedTextObject.style.backgroundColor !== 'transparent') {
+                          setLastTextBackgroundColor(selectedTextObject.style.backgroundColor)
+                        } else if (backgroundColor !== 'transparent') {
+                          setLastTextBackgroundColor(backgroundColor)
+                        }
                         handleUpdateTextStyle(selectedTextObject.id, { backgroundColor })
-                      }
+                      }}
                     />
                     <ColorRow
                       label="테두리"
                       value={selectedTextObject.style.borderColor}
                       allowTransparent
-                      transparentFallback="#2563eb"
-                      onChange={(borderColor) => handleUpdateTextStyle(selectedTextObject.id, { borderColor })}
+                      transparentFallback={lastTextBorderColor}
+                      onChange={(borderColor) => {
+                        if (borderColor === 'transparent' && selectedTextObject.style.borderColor !== 'transparent') {
+                          setLastTextBorderColor(selectedTextObject.style.borderColor)
+                        } else if (borderColor !== 'transparent') {
+                          setLastTextBorderColor(borderColor)
+                        }
+                        handleUpdateTextStyle(selectedTextObject.id, { borderColor })
+                      }}
                     />
                     <NumberRow
                       label="여백"
@@ -2595,10 +2686,15 @@ export function PdfViewer() {
                       label="배경"
                       value={selectedMathObject.backgroundColor}
                       allowTransparent
-                      transparentFallback="#ffffff"
-                      onChange={(backgroundColor) =>
+                      transparentFallback={lastMathBackgroundColor}
+                      onChange={(backgroundColor) => {
+                        if (backgroundColor === 'transparent' && selectedMathObject.backgroundColor !== 'transparent') {
+                          setLastMathBackgroundColor(selectedMathObject.backgroundColor)
+                        } else if (backgroundColor !== 'transparent') {
+                          setLastMathBackgroundColor(backgroundColor)
+                        }
                         handleUpdateMathStyle(selectedMathObject.id, { backgroundColor })
-                      }
+                      }}
                     />
                   </InspectorSection>
                   <InspectorSection title="스타일">
@@ -2655,7 +2751,7 @@ export function PdfViewer() {
         </span>
         <span className="status-center">
           <span className="status-nav">
-            <button
+            <EditorIconButton
               type="button"
               className="status-nav-btn"
               onClick={() => handleViewerCommand('previous-page')}
@@ -2664,9 +2760,9 @@ export function PdfViewer() {
               disabled={!loadedPdf || (currentPage || 1) <= 1}
             >
               <ChevronLeft size={15} />
-            </button>
+            </EditorIconButton>
             <span>{loadedPdf ? `${currentPage || 1} / ${loadedPdf.pageCount}` : '-'}</span>
-            <button
+            <EditorIconButton
               type="button"
               className="status-nav-btn"
               onClick={() => handleViewerCommand('next-page')}
@@ -2675,12 +2771,12 @@ export function PdfViewer() {
               disabled={!loadedPdf || (currentPage || 1) >= (loadedPdf?.pageCount ?? 1)}
             >
               <ChevronRight size={15} />
-            </button>
+            </EditorIconButton>
           </span>
         </span>
         <span className="status-right">
           <span className="status-zoom-group">
-            <button
+            <EditorIconButton
               type="button"
               className="status-nav-btn"
               onClick={() => handleViewerCommand('zoom-out')}
@@ -2689,8 +2785,8 @@ export function PdfViewer() {
               disabled={!loadedPdf}
             >
               <ZoomOut size={14} />
-            </button>
-            <button
+            </EditorIconButton>
+            <EditorButton
               type="button"
               className="status-zoom"
               onClick={() => handleViewerCommand('actual-size')}
@@ -2698,8 +2794,8 @@ export function PdfViewer() {
               disabled={!loadedPdf}
             >
               {toPercent(scale)}
-            </button>
-            <button
+            </EditorButton>
+            <EditorIconButton
               type="button"
               className="status-nav-btn"
               onClick={() => handleViewerCommand('zoom-in')}
@@ -2708,7 +2804,7 @@ export function PdfViewer() {
               disabled={!loadedPdf}
             >
               <ZoomIn size={14} />
-            </button>
+            </EditorIconButton>
           </span>
         </span>
       </footer>
@@ -2723,5 +2819,6 @@ export function PdfViewer() {
         />
       ) : null}
     </div>
+    </TooltipProvider>
   )
 }
