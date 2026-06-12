@@ -1,4 +1,5 @@
 import {
+  BlendMode,
   PDFDocument,
   appendBezierCurve,
   closePath,
@@ -299,6 +300,7 @@ export const flattenTextImagesOntoPdf = async (
         color,
         opacity: clampOpacity(highlight.opacity),
         borderOpacity: 0,
+        blendMode: BlendMode.Multiply,
       })
     }
   }

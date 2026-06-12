@@ -667,6 +667,7 @@ select:focus-visible {
 
 .pdf-page-surface {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   background: #ffffff;
   border: 1px solid #dce2e8;
@@ -746,8 +747,10 @@ select:focus-visible {
 
 .selection-preview-rect {
   position: absolute;
+  z-index: 3;
   background: rgba(47, 140, 255, 0.36);
   border-radius: 2px;
+  mix-blend-mode: multiply;
   pointer-events: none;
 }
 
@@ -873,6 +876,22 @@ select:focus-visible {
 
 .highlight-rect {
   position: absolute;
+  z-index: 3;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.highlight-object-frame {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.highlight-selection-outline {
+  position: absolute;
+  inset: 0;
+  outline: 1.5px dashed var(--accent);
+  outline-offset: 1px;
   pointer-events: none;
 }
 

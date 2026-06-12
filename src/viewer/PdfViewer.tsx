@@ -51,6 +51,7 @@ import {
 import * as pdfjsLib from 'pdfjs-dist'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.mjs?url'
+import { HighlightLayer } from '@/overlay/HighlightLayer'
 import { OverlayLayer } from '@/overlay/OverlayLayer'
 import {
   centerFrameInPage,
@@ -104,7 +105,8 @@ import { overlayStoreFromMetadata } from '@/save/MetadataStore'
 import { saveDocument, type SaveMode } from '@/save/SaveManager'
 import { renderRichTextObjectsToImages } from '@/text/richTextFlatten'
 import { normalizeSelectionRectForHighlight } from '@/annotations/selectionRects'
-import { clearSelection, selectOverlayObject } from '@/overlay/SelectionManager'
+import { clearSelection, findHighlightObjectAtPoint, selectOverlayObject } from '@/overlay/SelectionManager'
+import { splitHighlightOverlayObjects } from '@/overlay/overlayLayers'
 import {
   createOverlayHistory,
   markOverlayHistorySaved,
@@ -146,7 +148,7 @@ import {
   resolveFitPageScale,
   resolveFitWidthScale,
 } from './viewerMath'
-import { viewportRectToPdfRect } from '@/coordinates/PdfCoordinateConverter'
+import { clientPointToPagePoint, viewportRectToPdfRect } from '@/coordinates/PdfCoordinateConverter'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc
 
@@ -1851,16 +1853,35 @@ export function PdfViewer() {
       pointerDownPoint = { x: event.clientX, y: event.clientY }
     }
 
-    const handlePointerUp = () => {
+    const handlePointerUp = (event: PointerEvent) => {
       const startPoint = pointerDownPoint
       pointerDownPoint = null
 
       requestAnimationFrame(() => {
-        const selection = window.getSelection()
-        const hasTextSelection = Boolean(selection && selection.rangeCount > 0 && !selection.isCollapsed)
+        const browserSelection = window.getSelection()
+        const hasTextSelection = Boolean(browserSelection && browserSelection.rangeCount > 0 && !browserSelection.isCollapsed)
 
         if (!hasTextSelection && startPoint) {
-          setSelection(clearSelection())
+          const target = event.target
+          const pageSurface =
+            target instanceof Element
+              ? target.closest<HTMLElement>('.pdf-page-surface')
+              : null
+          const pageSection = pageSurface?.closest<HTMLElement>('.pdf-page')
+          const pageNumber = Number(pageSection?.dataset.pageNumber)
+
+          if (pageSurface && pageNumber) {
+            const point = clientPointToPagePoint(event.clientX, event.clientY, pageSurface, {
+              scale,
+              width: pageSizes[pageNumber]?.width ?? pageSurface.getBoundingClientRect().width,
+              height: pageSizes[pageNumber]?.height ?? pageSurface.getBoundingClientRect().height,
+            })
+            const hitHighlightId = findHighlightObjectAtPoint(overlayStoreRef.current.objects, pageNumber - 1, point)
+
+            setSelection(hitHighlightId ? selectOverlayObject(hitHighlightId) : clearSelection())
+          } else {
+            setSelection(clearSelection())
+          }
         }
 
         createHighlightsFromSelection()
@@ -1873,7 +1894,7 @@ export function PdfViewer() {
       document.removeEventListener('pointerdown', handlePointerDown)
       document.removeEventListener('pointerup', handlePointerUp)
     }
-  }, [activeTool, createHighlightsFromSelection])
+  }, [activeTool, createHighlightsFromSelection, pageSizes, scale])
 
   useEffect(() => {
     if (activeTool !== 'select' || (!selection.selectedObjectId && !editingObjectId)) {
@@ -2197,67 +2218,80 @@ export function PdfViewer() {
             </div>
           ) : (
             <div className={`page-stack page-stack-${pageViewMode}`}>
-              {visiblePageNumbers.map((pageNumber) => (
-                <PdfPageCanvas
-                  key={`${loadedPdf.filePath}-${pageNumber}`}
-                  document={loadedPdf.document}
-                  pageNumber={pageNumber}
-                  scale={scale}
-                  onSizeChange={handlePageSizeChange}
-                >
-                  {selectionPreviewRectsByPage[pageNumber]?.length ? (
-                    <div className="selection-preview-layer" aria-hidden="true">
-                      {selectionPreviewRectsByPage[pageNumber].map((rect, index) => (
-                        <span
-                          key={`${pageNumber}-${index}-${rect.x}-${rect.y}`}
-                          className="selection-preview-rect"
-                          style={{
-                            left: rect.x,
-                            top: rect.y,
-                            width: rect.width,
-                            height: rect.height,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  ) : null}
-                  {pageSizes[pageNumber] ? (
-                    <OverlayLayer
-                      activeTool={activeTool}
-                      objects={getObjectsForPage(overlayStore.objects, pageNumber - 1)}
-                      pageIndex={pageNumber - 1}
-                      selectedObjectId={selection.selectedObjectId}
-                      editingObjectId={editingObjectId}
-                      inkDraftStyle={inkStyle}
-                      shapeDraftStyle={shapeStyle}
-                      viewport={{
-                        scale,
-                        width: pageSizes[pageNumber].width,
-                        height: pageSizes[pageNumber].height,
-                      }}
-                      onClearSelection={handleClearSelection}
-                      onCreatePlaceholder={handleCreatePlaceholder}
-                      onCreateText={handleCreateText}
-                      onCreateInk={handleCreateInk}
-                      onCreateShape={handleCreateShape}
-                      onCreateMath={handleCreateMath}
-                      onBeginMathEdit={handleBeginMathEdit}
-                      onBeginTextEdit={handleBeginTextEdit}
-                      onChangeTextContent={handleChangeTextContent}
-                      onCommitTextContent={handleCommitTextContent}
-                      onDeleteEmptyText={handleDeleteEmptyText}
-                      onSyncTextHeight={handleSyncTextHeight}
-                      onFinishTextEdit={handleFinishTextEdit}
-                      onRegisterTextEditor={setActiveTextEditor}
-                      onTextEditorStateChange={setTextEditorState}
-                      onMoveObject={handleMoveObject}
-                      onDuplicateObject={handleDuplicateObject}
-                      onResizeObject={handleResizeObject}
-                      onSelectObject={(objectId) => setSelection(selectOverlayObject(objectId))}
-                    />
-                  ) : null}
-                </PdfPageCanvas>
-              ))}
+              {visiblePageNumbers.map((pageNumber) => {
+                const pageSize = pageSizes[pageNumber]
+                const pageObjects = getObjectsForPage(overlayStore.objects, pageNumber - 1)
+                const { highlightObjects, nonHighlightObjects } = splitHighlightOverlayObjects(pageObjects)
+                const viewport = pageSize
+                  ? {
+                      scale,
+                      width: pageSize.width,
+                      height: pageSize.height,
+                    }
+                  : null
+
+                return (
+                  <PdfPageCanvas
+                    key={`${loadedPdf.filePath}-${pageNumber}`}
+                    document={loadedPdf.document}
+                    pageNumber={pageNumber}
+                    scale={scale}
+                    onSizeChange={handlePageSizeChange}
+                  >
+                    {viewport ? (
+                      <HighlightLayer
+                        objects={highlightObjects}
+                        selectedObjectId={selection.selectedObjectId}
+                        viewport={viewport}
+                      />
+                    ) : null}
+                    {selectionPreviewRectsByPage[pageNumber]?.map((rect, index) => (
+                      <span
+                        key={`${pageNumber}-${index}-${rect.x}-${rect.y}`}
+                        className="selection-preview-rect"
+                        aria-hidden="true"
+                        style={{
+                          left: rect.x,
+                          top: rect.y,
+                          width: rect.width,
+                          height: rect.height,
+                        }}
+                      />
+                    )) ?? null}
+                    {viewport ? (
+                      <OverlayLayer
+                        activeTool={activeTool}
+                        objects={nonHighlightObjects}
+                        pageIndex={pageNumber - 1}
+                        selectedObjectId={selection.selectedObjectId}
+                        editingObjectId={editingObjectId}
+                        inkDraftStyle={inkStyle}
+                        shapeDraftStyle={shapeStyle}
+                        viewport={viewport}
+                        onClearSelection={handleClearSelection}
+                        onCreatePlaceholder={handleCreatePlaceholder}
+                        onCreateText={handleCreateText}
+                        onCreateInk={handleCreateInk}
+                        onCreateShape={handleCreateShape}
+                        onCreateMath={handleCreateMath}
+                        onBeginMathEdit={handleBeginMathEdit}
+                        onBeginTextEdit={handleBeginTextEdit}
+                        onChangeTextContent={handleChangeTextContent}
+                        onCommitTextContent={handleCommitTextContent}
+                        onDeleteEmptyText={handleDeleteEmptyText}
+                        onSyncTextHeight={handleSyncTextHeight}
+                        onFinishTextEdit={handleFinishTextEdit}
+                        onRegisterTextEditor={setActiveTextEditor}
+                        onTextEditorStateChange={setTextEditorState}
+                        onMoveObject={handleMoveObject}
+                        onDuplicateObject={handleDuplicateObject}
+                        onResizeObject={handleResizeObject}
+                        onSelectObject={(objectId) => setSelection(selectOverlayObject(objectId))}
+                      />
+                    ) : null}
+                  </PdfPageCanvas>
+                )
+              })}
             </div>
           )}
         </section>

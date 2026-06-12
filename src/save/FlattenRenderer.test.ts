@@ -104,6 +104,32 @@ describe('FlattenRenderer', () => {
     expect(loaded.getPageCount()).toBe(1)
   })
 
+  it('writes highlights with multiply blend mode so flattened text remains readable', async () => {
+    const pdf = await PDFDocument.create()
+    pdf.addPage([300, 200])
+    const basePdfBytes = await pdf.save()
+    const highlight: FlattenHighlight = {
+      objectId: 'highlight-1',
+      pageIndex: 0,
+      rects: [{ x: 20, y: 30, width: 90, height: 16 }],
+      color: '#facc15',
+      opacity: 0.45,
+    }
+
+    const output = await flattenTextImagesOntoPdf(basePdfBytes, [], [], [highlight])
+    const loaded = await PDFDocument.load(output)
+    const extGState = loaded.getPage(0).node.normalizedEntries().ExtGState
+    const states = extGState?.keys().map((key) => loaded.context.lookup(extGState.get(key), PDFDict)) ?? []
+
+    expect(
+      states.some(
+        (state) =>
+          state.get(PDFName.of('BM'))?.toString() === '/Multiply' &&
+          state.get(PDFName.of('ca'))?.toString() === '0.45',
+      ),
+    ).toBe(true)
+  })
+
   it('flattens shape overlays from the same base PDF without duplicate growth', async () => {
     const pdf = await PDFDocument.create()
     pdf.addPage([300, 200])

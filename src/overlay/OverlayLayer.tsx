@@ -12,7 +12,6 @@ import {
 import { MathBox } from '@/math/MathBox'
 import type { EditorTool } from '@/tools/EditorTool'
 import type {
-  HighlightOverlayObject,
   ImageOverlayObject,
   InkOverlayObject,
   OverlayObject,
@@ -168,38 +167,6 @@ function TextOverlayView({
         onEditorStateChange={onEditorStateChange}
       />
     </div>
-  )
-}
-
-function HighlightOverlayView({
-  object,
-  viewport,
-}: {
-  object: HighlightOverlayObject
-  viewport: PDFPageViewportLike
-}) {
-  return (
-    <>
-      {object.rects.map((rect, index) => {
-        const viewportRect = pdfRectToViewportRect(rect, viewport)
-        const frameRect = pdfRectToViewportRect(object.frame, viewport)
-
-        return (
-          <span
-            key={`${object.id}-${index}`}
-            className="highlight-rect"
-            style={{
-              left: viewportRect.x - frameRect.x,
-              top: viewportRect.y - frameRect.y,
-              width: viewportRect.width,
-              height: viewportRect.height,
-              backgroundColor: object.style.color,
-              opacity: object.style.opacity,
-            }}
-          />
-        )
-      })}
-    </>
   )
 }
 
@@ -761,8 +728,6 @@ export function OverlayLayer({
               />
             ) : object.type === 'image' ? (
               <ImageOverlayView object={object} />
-            ) : object.type === 'highlight' ? (
-              <HighlightOverlayView object={object} viewport={viewport} />
             ) : object.type === 'ink' ? (
               <InkOverlayView object={object} viewport={viewport} />
             ) : object.type === 'shape' ? (
