@@ -1,31 +1,46 @@
 import type { OverlayObjectStore } from './OverlayObjectStore'
 
-export type OverlayHistory = {
-  past: OverlayObjectStore[]
-  present: OverlayObjectStore
-  future: OverlayObjectStore[]
-  baseline: OverlayObjectStore
+// A history entry pairs the document state with the selection that was active when it was
+// committed, so undo/redo can restore both together.
+export type OverlaySnapshot = {
+  store: OverlayObjectStore
+  selectedObjectId: string | null
 }
 
-export const createOverlayHistory = (initialStore: OverlayObjectStore): OverlayHistory => ({
+export type OverlayHistory = {
+  past: OverlaySnapshot[]
+  present: OverlaySnapshot
+  future: OverlaySnapshot[]
+}
+
+// Cap the undo depth so long editing sessions can't grow memory without bound. Each entry holds
+// a full store snapshot, so we keep a generous but finite window of recent edits.
+const MAX_HISTORY_ENTRIES = 100
+
+export const createOverlayHistory = (
+  initialStore: OverlayObjectStore,
+  selectedObjectId: string | null = null,
+): OverlayHistory => ({
   past: [],
-  present: initialStore,
+  present: { store: initialStore, selectedObjectId },
   future: [],
-  baseline: initialStore,
 })
 
 export const pushOverlayHistory = (
   history: OverlayHistory,
   nextStore: OverlayObjectStore,
+  selectedObjectId: string | null = null,
 ): OverlayHistory => {
-  if (nextStore === history.present) {
+  if (nextStore === history.present.store) {
     return history
   }
 
+  const past = [...history.past, history.present]
+
   return {
     ...history,
-    past: [...history.past, history.present],
-    present: nextStore,
+    past: past.length > MAX_HISTORY_ENTRIES ? past.slice(past.length - MAX_HISTORY_ENTRIES) : past,
+    present: { store: nextStore, selectedObjectId },
     future: [],
   }
 }
@@ -65,7 +80,6 @@ export const markOverlayHistorySaved = (
   savedStore: OverlayObjectStore,
 ): OverlayHistory => ({
   past: history.past,
-  present: savedStore,
+  present: { store: savedStore, selectedObjectId: history.present.selectedObjectId },
   future: history.future,
-  baseline: savedStore,
 })

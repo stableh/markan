@@ -61,6 +61,11 @@ type OverlayLayerProps = {
   onFinishTextEdit: () => void
   onRegisterTextEditor: (handle: RichTextEditorHandle | null) => void
   onTextEditorStateChange: (state: RichTextEditorState) => void
+  // Pointer-drag lifecycle. move/resize/duplicate only preview during the drag; the gesture is
+  // committed to history as a single entry on commit, or reverted on cancel (Escape / cancel).
+  onGestureStart: () => void
+  onGestureCommit: () => void
+  onGestureCancel: () => void
   onMoveObject: (objectId: string, delta: { dx: number; dy: number }) => void
   onDuplicateObject: (objectId: string) => string | null
   onResizeObject: (
@@ -420,6 +425,9 @@ export function OverlayLayer({
   onFinishTextEdit,
   onRegisterTextEditor,
   onTextEditorStateChange,
+  onGestureStart,
+  onGestureCommit,
+  onGestureCancel,
   onMoveObject,
   onDuplicateObject,
   onResizeObject,
@@ -443,6 +451,7 @@ export function OverlayLayer({
     event.preventDefault()
     event.stopPropagation()
     dragStateRef.current = dragState
+    onGestureStart()
 
     const handlePointerMove = (pointerEvent: PointerEvent) => {
       const layer = layerRef.current
@@ -482,14 +491,39 @@ export function OverlayLayer({
       }
     }
 
-    const handlePointerUp = () => {
+    // Tear down once, committing the gesture as a single history entry or reverting it on cancel.
+    let settled = false
+    const finishDrag = (commit: boolean) => {
+      if (settled) {
+        return
+      }
+      settled = true
       dragStateRef.current = null
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('pointercancel', handlePointerCancel)
+      window.removeEventListener('keydown', handleKeyDown)
+
+      if (commit) {
+        onGestureCommit()
+      } else {
+        onGestureCancel()
+      }
+    }
+
+    const handlePointerUp = () => finishDrag(true)
+    const handlePointerCancel = () => finishDrag(false)
+    const handleKeyDown = (keyEvent: KeyboardEvent) => {
+      if (keyEvent.key === 'Escape') {
+        keyEvent.preventDefault()
+        finishDrag(false)
+      }
     }
 
     window.addEventListener('pointermove', handlePointerMove)
     window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('pointercancel', handlePointerCancel)
+    window.addEventListener('keydown', handleKeyDown)
   }
 
   const handleLayerPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {

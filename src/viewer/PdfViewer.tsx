@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -138,12 +139,14 @@ import { ThumbnailRail } from './ThumbnailRail'
 import {
   DEFAULT_PAGE_VIEW_MODE,
   getPageNumberForNavigation,
+  restoreScrollPosition,
   type PageNavigationCommand,
   type PageViewMode,
 } from './viewMode'
 import {
   getNextZoom,
   getVisiblePageNumber,
+  resolvePageViewportSize,
   resolveFitPageScale,
   resolveFitWidthScale,
 } from './viewerMath'
@@ -259,12 +262,17 @@ function ColorRow({
   label,
   value,
   onChange,
+  onCommit,
   allowTransparent,
   transparentFallback = '#ffffff',
 }: {
   label: string
   value: string
   onChange: (value: string) => void
+  // The native color picker fires onChange continuously while dragging; onChange previews each
+  // step and onCommit records one undo entry on blur. Discrete actions (transparent toggle,
+  // clicking a transparent swatch) preview + commit together.
+  onCommit?: () => void
   allowTransparent?: boolean
   transparentFallback?: string
 }) {
@@ -280,7 +288,10 @@ function ColorRow({
             type="checkbox"
             className="insp-checkbox"
             checked={isTransparent}
-            onChange={(event) => onChange(event.currentTarget.checked ? 'transparent' : transparentFallback)}
+            onChange={(event) => {
+              onChange(event.currentTarget.checked ? 'transparent' : transparentFallback)
+              onCommit?.()
+            }}
           />
           <span>투명</span>
         </label>
@@ -292,9 +303,11 @@ function ColorRow({
         onClick={() => {
           if (isTransparent) {
             onChange(transparentFallback)
+            onCommit?.()
           }
         }}
         onChange={(event) => onChange(event.currentTarget.value)}
+        onBlur={onCommit}
       />
     </div>
   )
@@ -304,6 +317,7 @@ function NumberRow({
   label,
   value,
   onChange,
+  onCommit,
   min,
   max,
   step,
@@ -312,6 +326,8 @@ function NumberRow({
   label: string
   value: number
   onChange: (value: number) => void
+  // Fires on blur. onChange previews each keystroke; onCommit records one undo entry for the edit.
+  onCommit?: () => void
   min?: number
   max?: number
   step?: number
@@ -329,12 +345,21 @@ function NumberRow({
         step={step}
         disabled={disabled}
         onChange={(event) => onChange(Number(event.currentTarget.value))}
+        onBlur={onCommit}
       />
     </label>
   )
 }
 
-function OpacityRow({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+function OpacityRow({
+  value,
+  onChange,
+  onCommit,
+}: {
+  value: number
+  onChange: (value: number) => void
+  onCommit: () => void
+}) {
   const percent = Math.round(value * 100)
 
   return (
@@ -345,7 +370,9 @@ function OpacityRow({ value, onChange }: { value: number; onChange: (value: numb
         max={100}
         step={1}
         value={[percent]}
+        // onValueChange previews every step; onValueCommit (pointer release) records one undo entry.
         onValueChange={([nextValue]) => onChange(nextValue / 100)}
+        onValueCommit={() => onCommit()}
         aria-label="불투명도"
       />
       <span className="insp-value-pill">{percent}%</span>
@@ -398,6 +425,7 @@ function GeometrySection({
   canEditWidth,
   canEditHeight,
   onGeometryChange,
+  onGeometryCommit,
   rotation,
   onRotationChange,
 }: {
@@ -405,6 +433,8 @@ function GeometrySection({
   canEditWidth: boolean
   canEditHeight: boolean
   onGeometryChange: (field: 'x' | 'y' | 'w' | 'h', value: number) => void
+  // Commit the previewed geometry edit on blur (one undo entry per field edit).
+  onGeometryCommit: () => void
   rotation: number
   onRotationChange: (value: number) => void
 }) {
@@ -420,6 +450,7 @@ function GeometrySection({
             className="insp-input"
             value={round(frame.x)}
             onChange={(event) => onGeometryChange('x', Number(event.currentTarget.value))}
+            onBlur={onGeometryCommit}
           />
         </label>
         <label className="insp-geo-field">
@@ -429,6 +460,7 @@ function GeometrySection({
             className="insp-input"
             value={round(frame.y)}
             onChange={(event) => onGeometryChange('y', Number(event.currentTarget.value))}
+            onBlur={onGeometryCommit}
           />
         </label>
         <label className="insp-geo-field">
@@ -440,6 +472,7 @@ function GeometrySection({
             value={round(frame.width)}
             disabled={!canEditWidth}
             onChange={(event) => onGeometryChange('w', Number(event.currentTarget.value))}
+            onBlur={onGeometryCommit}
           />
         </label>
         <label className="insp-geo-field">
@@ -451,6 +484,7 @@ function GeometrySection({
             value={round(frame.height)}
             disabled={!canEditHeight}
             onChange={(event) => onGeometryChange('h', Number(event.currentTarget.value))}
+            onBlur={onGeometryCommit}
           />
         </label>
       </div>
@@ -471,6 +505,7 @@ function GeometrySection({
 
 export function PdfViewer() {
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const pendingSinglePageScrollPositionRef = useRef<{ left: number; top: number } | null>(null)
   const basePdfStoreRef = useRef<BasePdfStore | null>(null)
   const overlayHistoryRef = useRef<OverlayHistory>(createEmptyOverlayHistory())
   const [loadedPdf, setLoadedPdf] = useState<LoadedPdf | null>(null)
@@ -503,6 +538,12 @@ export function PdfViewer() {
   const [overlayStore, setOverlayStore] = useState(createEmptyOverlayStore)
   const overlayStoreRef = useRef(overlayStore)
   const [selection, setSelection] = useState(clearSelection)
+  // Mirror the selection so history pushes can capture "what was selected" without re-creating
+  // the store mutators on every selection change.
+  const selectionRef = useRef(selection)
+  // Snapshot of the document + selection at the start of a pointer drag, used to revert the
+  // interaction when it is cancelled (Escape / pointercancel).
+  const interactionBaselineRef = useRef<{ store: typeof overlayStore; selectedObjectId: string | null } | null>(null)
   const [selectionPreviewRectsByPage, setSelectionPreviewRectsByPage] = useState<SelectionPreviewRectsByPage>({})
   const [editingObjectId, setEditingObjectId] = useState<string | null>(null)
   const [activeTextEditor, setActiveTextEditor] = useState<RichTextEditorHandle | null>(null)
@@ -518,6 +559,25 @@ export function PdfViewer() {
     () => (pageViewMode === 'single' ? pageNumbers.filter((pageNumber) => pageNumber === (currentPage || 1)) : pageNumbers),
     [currentPage, pageNumbers, pageViewMode],
   )
+  useLayoutEffect(() => {
+    if (pageViewMode !== 'single') {
+      pendingSinglePageScrollPositionRef.current = null
+      return
+    }
+
+    const pendingPosition = pendingSinglePageScrollPositionRef.current
+
+    if (!pendingPosition) {
+      return
+    }
+
+    const container = scrollRef.current
+
+    if (container) {
+      restoreScrollPosition(container, pendingPosition)
+      pendingSinglePageScrollPositionRef.current = null
+    }
+  }, [currentPage, pageViewMode, visiblePageNumbers])
   const selectedObject = useMemo(
     () => getObjectById(overlayStore.objects, selection.selectedObjectId),
     [overlayStore.objects, selection.selectedObjectId],
@@ -568,25 +628,68 @@ export function PdfViewer() {
     setOverlayStore(nextStore)
   }, [])
 
-  const commitOverlayStore = useCallback((nextStore: ReturnType<typeof createOverlayObjectStore>) => {
-    overlayHistoryRef.current = pushOverlayHistory(overlayHistoryRef.current, nextStore)
-    overlayStoreRef.current = nextStore
-    setOverlayStore(nextStore)
-  }, [])
-
   const updateOverlayStore = useCallback(
     (
       update: (currentStore: ReturnType<typeof createOverlayObjectStore>) => ReturnType<typeof createOverlayObjectStore>,
+      options?: { commit?: boolean },
     ) => {
+      // commit (default) pushes a history entry; commit:false only updates the on-screen store so
+      // a continuous interaction can be previewed and later committed as a single entry.
+      const commit = options?.commit ?? true
       setOverlayStore((currentStore) => {
         const nextStore = update(currentStore)
-        overlayHistoryRef.current = pushOverlayHistory(overlayHistoryRef.current, nextStore)
+        if (commit) {
+          overlayHistoryRef.current = pushOverlayHistory(
+            overlayHistoryRef.current,
+            nextStore,
+            selectionRef.current.selectedObjectId,
+          )
+        }
         overlayStoreRef.current = nextStore
         return nextStore
       })
     },
     [],
   )
+
+  // Commit whatever is currently rendered as one history entry. Used to close out a previewed
+  // interaction (drag / slider). No-ops when nothing changed since the last commit.
+  const commitPendingOverlayStore = useCallback(() => {
+    overlayHistoryRef.current = pushOverlayHistory(
+      overlayHistoryRef.current,
+      overlayStoreRef.current,
+      selectionRef.current.selectedObjectId,
+    )
+  }, [])
+
+  // Pointer-drag lifecycle: remember the pre-drag state so the interaction can be committed once
+  // on pointerup, or reverted on Escape / pointercancel.
+  const beginOverlayInteraction = useCallback(() => {
+    interactionBaselineRef.current = {
+      store: overlayStoreRef.current,
+      selectedObjectId: selectionRef.current.selectedObjectId,
+    }
+  }, [])
+
+  const commitOverlayInteraction = useCallback(() => {
+    commitPendingOverlayStore()
+    interactionBaselineRef.current = null
+  }, [commitPendingOverlayStore])
+
+  const cancelOverlayInteraction = useCallback(() => {
+    const baseline = interactionBaselineRef.current
+    interactionBaselineRef.current = null
+
+    if (!baseline) {
+      return
+    }
+
+    overlayStoreRef.current = baseline.store
+    setOverlayStore(baseline.store)
+    setSelection(
+      baseline.selectedObjectId ? selectOverlayObject(baseline.selectedObjectId) : clearSelection(),
+    )
+  }, [])
 
   const reportError = useCallback((title: string, message: string, errorDetail?: unknown) => {
     if (errorDetail) {
@@ -967,12 +1070,26 @@ export function PdfViewer() {
     setEditingObjectId(objectId)
   }, [])
 
+  // Live typing only previews; the editor's own (ProseMirror) undo stack handles per-keystroke
+  // undo while focused. The whole edit lands in our history as one entry when it is committed.
   const handleChangeTextContent = useCallback((objectId: string, contentHtml: string) => {
-    updateOverlayStore((currentStore) => updateTextObjectContent(currentStore, objectId, contentHtml))
+    updateOverlayStore((currentStore) => updateTextObjectContent(currentStore, objectId, contentHtml), {
+      commit: false,
+    })
   }, [updateOverlayStore])
 
+  // Commit on blur. Idempotent: when the previewed content already matches, the updater returns
+  // the same store reference so no duplicate entry is pushed (e.g. blur firing twice).
   const handleCommitTextContent = useCallback((objectId: string, contentHtml: string) => {
-    updateOverlayStore((currentStore) => updateTextObjectContent(currentStore, objectId, contentHtml))
+    updateOverlayStore((currentStore) => {
+      const object = getObjectById(currentStore.objects, objectId)
+
+      if (object?.type === 'text' && object.contentHtml === contentHtml) {
+        return currentStore
+      }
+
+      return updateTextObjectContent(currentStore, objectId, contentHtml)
+    })
   }, [updateOverlayStore])
 
   const handleDeleteEmptyText = useCallback((objectId: string) => {
@@ -996,17 +1113,20 @@ export function PdfViewer() {
     })
   }, [])
 
+  // Drag frames only preview; the move is committed as one entry when the pointer is released.
   const handleMoveObject = useCallback((objectId: string, delta: { dx: number; dy: number }) => {
-    updateOverlayStore((currentStore) => moveOverlayObject(currentStore, objectId, delta))
+    updateOverlayStore((currentStore) => moveOverlayObject(currentStore, objectId, delta), { commit: false })
   }, [updateOverlayStore])
 
+  // Called mid-drag for alt-drag duplication. The clone is only previewed here; the whole
+  // gesture (clone + move) is committed as a single history entry when the pointer is released,
+  // so one undo removes the duplicate.
   const handleDuplicateObject = useCallback(
     (objectId: string) => {
       const result = duplicateOverlayObject(overlayStoreRef.current, objectId)
       const duplicatedObjectId = result.objectId
 
       if (duplicatedObjectId) {
-        overlayHistoryRef.current = pushOverlayHistory(overlayHistoryRef.current, result.store)
         overlayStoreRef.current = result.store
         setOverlayStore(result.store)
         clearEditingState()
@@ -1020,7 +1140,10 @@ export function PdfViewer() {
 
   const handleResizeObject = useCallback(
     (objectId: string, handle: ResizeHandlePosition, delta: { dx: number; dy: number }) => {
-      updateOverlayStore((currentStore) => resizeOverlayObject(currentStore, objectId, handle, delta))
+      // Preview each resize frame; the final size is committed on pointer release.
+      updateOverlayStore((currentStore) => resizeOverlayObject(currentStore, objectId, handle, delta), {
+        commit: false,
+      })
     },
     [updateOverlayStore],
   )
@@ -1041,8 +1164,8 @@ export function PdfViewer() {
   }, [updateOverlayStore])
 
   const handleUpdateTextStyle = useCallback(
-    (objectId: string, style: Partial<TextOverlayObject['style']>) => {
-      updateOverlayStore((currentStore) => updateTextObjectStyle(currentStore, objectId, style))
+    (objectId: string, style: Partial<TextOverlayObject['style']>, opts?: { commit?: boolean }) => {
+      updateOverlayStore((currentStore) => updateTextObjectStyle(currentStore, objectId, style), opts)
       // Remember as the template for the next text box.
       setTextStyle((current) => ({ ...current, ...style }))
 
@@ -1054,8 +1177,8 @@ export function PdfViewer() {
   )
 
   const handleUpdateImageStyle = useCallback(
-    (objectId: string, style: Partial<ImageOverlayObject['style']>) => {
-      updateOverlayStore((currentStore) => updateImageObjectStyle(currentStore, objectId, style))
+    (objectId: string, style: Partial<ImageOverlayObject['style']>, opts?: { commit?: boolean }) => {
+      updateOverlayStore((currentStore) => updateImageObjectStyle(currentStore, objectId, style), opts)
     },
     [updateOverlayStore],
   )
@@ -1071,19 +1194,25 @@ export function PdfViewer() {
     [handleUpdateTextStyle, selectedTextObject],
   )
 
-  const handleUpdateInkStyle = useCallback((objectId: string, style: Partial<InkOverlayStyle>) => {
-    updateOverlayStore((currentStore) => updateInkObjectStyle(currentStore, objectId, style))
-    setInkStyle((current) => ({ ...current, ...style }))
-  }, [updateOverlayStore])
+  const handleUpdateInkStyle = useCallback(
+    (objectId: string, style: Partial<InkOverlayStyle>, opts?: { commit?: boolean }) => {
+      updateOverlayStore((currentStore) => updateInkObjectStyle(currentStore, objectId, style), opts)
+      setInkStyle((current) => ({ ...current, ...style }))
+    },
+    [updateOverlayStore],
+  )
 
-  const handleUpdateShapeStyle = useCallback((objectId: string, style: Partial<ShapeOverlayStyle>) => {
-    updateOverlayStore((currentStore) => updateShapeObjectStyle(currentStore, objectId, style))
-  }, [updateOverlayStore])
+  const handleUpdateShapeStyle = useCallback(
+    (objectId: string, style: Partial<ShapeOverlayStyle>, opts?: { commit?: boolean }) => {
+      updateOverlayStore((currentStore) => updateShapeObjectStyle(currentStore, objectId, style), opts)
+    },
+    [updateOverlayStore],
+  )
 
   const handleShapeStyleChange = useCallback(
-    (style: Partial<ShapeOverlayStyle>) => {
+    (style: Partial<ShapeOverlayStyle>, opts?: { commit?: boolean }) => {
       if (selectedShapeObject) {
-        handleUpdateShapeStyle(selectedShapeObject.id, style)
+        handleUpdateShapeStyle(selectedShapeObject.id, style, opts)
       }
 
       // Always remember the latest settings for the next shape.
@@ -1095,41 +1224,44 @@ export function PdfViewer() {
     [handleUpdateShapeStyle, selectedShapeObject],
   )
 
-  const handleUpdateImageFrame = useCallback((object: ImageOverlayObject, patch: Partial<PdfRect>) => {
-    const aspectRatio = object.frame.width / object.frame.height
-    let nextFrame: PdfRect = {
-      ...object.frame,
-      ...patch,
-    }
-
-    if (typeof patch.width === 'number' && typeof patch.height !== 'number') {
-      nextFrame = {
-        ...nextFrame,
-        height: patch.width / aspectRatio,
+  const handleUpdateImageFrame = useCallback(
+    (object: ImageOverlayObject, patch: Partial<PdfRect>, opts?: { commit?: boolean }) => {
+      const aspectRatio = object.frame.width / object.frame.height
+      let nextFrame: PdfRect = {
+        ...object.frame,
+        ...patch,
       }
-    }
 
-    if (typeof patch.height === 'number' && typeof patch.width !== 'number') {
-      nextFrame = {
-        ...nextFrame,
-        width: patch.height * aspectRatio,
+      if (typeof patch.width === 'number' && typeof patch.height !== 'number') {
+        nextFrame = {
+          ...nextFrame,
+          height: patch.width / aspectRatio,
+        }
       }
-    }
 
-    updateOverlayStore((currentStore) => updateOverlayObjectFrame(currentStore, object.id, nextFrame))
-  }, [updateOverlayStore])
+      if (typeof patch.height === 'number' && typeof patch.width !== 'number') {
+        nextFrame = {
+          ...nextFrame,
+          width: patch.height * aspectRatio,
+        }
+      }
+
+      updateOverlayStore((currentStore) => updateOverlayObjectFrame(currentStore, object.id, nextFrame), opts)
+    },
+    [updateOverlayStore],
+  )
 
   const handleUpdateMathStyle = useCallback(
-    (objectId: string, style: Partial<MathOverlayStyle>) => {
-      updateOverlayStore((currentStore) => updateMathObjectStyle(currentStore, objectId, style))
+    (objectId: string, style: Partial<MathOverlayStyle>, opts?: { commit?: boolean }) => {
+      updateOverlayStore((currentStore) => updateMathObjectStyle(currentStore, objectId, style), opts)
       setMathStyle((current) => ({ ...current, ...style }))
     },
     [updateOverlayStore],
   )
 
   const handleUpdateMathContent = useCallback(
-    (objectId: string, content: { latex: string; displayMode: boolean }) => {
-      updateOverlayStore((currentStore) => updateMathObjectContent(currentStore, objectId, content))
+    (objectId: string, content: { latex: string; displayMode: boolean }, opts?: { commit?: boolean }) => {
+      updateOverlayStore((currentStore) => updateMathObjectContent(currentStore, objectId, content), opts)
     },
     [updateOverlayStore],
   )
@@ -1137,7 +1269,7 @@ export function PdfViewer() {
   // Changing the math font size refits the box so larger text never gets clipped — keeping the
   // top-left anchor. (Manual resize still works for fine-tuning afterwards.)
   const handleMathFontSizeChange = useCallback(
-    (objectId: string, fontSize: number) => {
+    (objectId: string, fontSize: number, opts?: { commit?: boolean }) => {
       const object = getObjectById(overlayStore.objects, objectId)
 
       if (!object || object.type !== 'math' || Number.isNaN(fontSize)) {
@@ -1153,7 +1285,7 @@ export function PdfViewer() {
           width: size.width,
           height: size.height,
         })
-      })
+      }, opts)
       setMathStyle((current) => ({ ...current, fontSize }))
     },
     [overlayStore.objects, updateOverlayStore],
@@ -1220,6 +1352,8 @@ export function PdfViewer() {
     [selection.selectedObjectId, updateOverlayStore],
   )
 
+  // Geometry fields only preview while typing; the edit is committed on blur (handleGeometryCommit)
+  // so e.g. "12" -> "24" is a single undo step. (x/y route through the preview-only move handler.)
   const handleGeometryChange = useCallback(
     (field: 'x' | 'y' | 'w' | 'h', value: number) => {
       if (!selectedObject || Number.isNaN(value)) {
@@ -1242,6 +1376,7 @@ export function PdfViewer() {
         handleUpdateImageFrame(
           selectedObject,
           field === 'w' ? { width: Math.max(1, value) } : { height: Math.max(1, value) },
+          { commit: false },
         )
         return
       }
@@ -1251,20 +1386,25 @@ export function PdfViewer() {
           ? { ...frame, width: Math.max(1, value) }
           : { ...frame, height: Math.max(1, value) }
 
-      updateOverlayStore((currentStore) => updateOverlayObjectFrame(currentStore, selectedObject.id, nextFrame))
+      updateOverlayStore(
+        (currentStore) => updateOverlayObjectFrame(currentStore, selectedObject.id, nextFrame),
+        { commit: false },
+      )
     },
     [handleMoveObject, handleUpdateImageFrame, selectedObject, updateOverlayStore],
   )
 
+  // The opacity slider drags continuously: each value previews (commit:false), and the drag is
+  // committed as one history entry on release (onValueCommit -> commitPendingOverlayStore).
   const handleSelectedOpacityChange = useCallback(
-    (value: number) => {
+    (value: number, opts?: { commit?: boolean }) => {
       if (selectedTextObject) {
-        handleUpdateTextStyle(selectedTextObject.id, { opacity: value })
+        handleUpdateTextStyle(selectedTextObject.id, { opacity: value }, opts)
         return
       }
 
       if (selectedImageObject) {
-        handleUpdateImageStyle(selectedImageObject.id, { opacity: value })
+        handleUpdateImageStyle(selectedImageObject.id, { opacity: value }, opts)
         return
       }
 
@@ -1274,7 +1414,7 @@ export function PdfViewer() {
       }
 
       if (selectedInkObject) {
-        handleUpdateInkStyle(selectedInkObject.id, { opacity: value })
+        handleUpdateInkStyle(selectedInkObject.id, { opacity: value }, opts)
         return
       }
 
@@ -1284,12 +1424,12 @@ export function PdfViewer() {
       }
 
       if (selectedShapeObject || activeShapeKind) {
-        handleShapeStyleChange({ opacity: value })
+        handleShapeStyleChange({ opacity: value }, opts)
         return
       }
 
       if (selectedMathObject) {
-        handleUpdateMathStyle(selectedMathObject.id, { opacity: value })
+        handleUpdateMathStyle(selectedMathObject.id, { opacity: value }, opts)
         return
       }
 
@@ -1311,41 +1451,43 @@ export function PdfViewer() {
     ],
   )
 
+  const handleOpacityPreview = useCallback(
+    (value: number) => handleSelectedOpacityChange(value, { commit: false }),
+    [handleSelectedOpacityChange],
+  )
+
+  const handleOpacityCommit = useCallback(() => {
+    commitPendingOverlayStore()
+  }, [commitPendingOverlayStore])
+
   const getCommittedOverlayStoreForSave = useCallback(() => {
     if (!editingObjectId || !activeTextEditor) {
       return overlayStore
     }
 
+    // commit() flushes the editor and commits the edit to history via its callbacks; we only
+    // derive the resulting store synchronously here for the save payload.
     const contentHtml = activeTextEditor.commit()
 
     if (contentHtml === null) {
       return overlayStore
     }
 
-    const nextStore = isTextContentEmpty(contentHtml)
+    return isTextContentEmpty(contentHtml)
       ? deleteEmptyTextObject(overlayStore, editingObjectId)
       : updateTextObjectContent(overlayStore, editingObjectId, contentHtml)
-
-    commitOverlayStore(nextStore)
-    return nextStore
-  }, [activeTextEditor, commitOverlayStore, editingObjectId, overlayStore])
+  }, [activeTextEditor, editingObjectId, overlayStore])
 
   const handleClearSelection = useCallback(() => {
+    // Flushing the editor commits any pending edit (and removes the box if left empty) through
+    // the editor's commit callbacks, so no extra history push is needed here.
     if (editingObjectId && activeTextEditor) {
-      const contentHtml = activeTextEditor.commit()
-
-      if (contentHtml !== null) {
-        const nextStore = isTextContentEmpty(contentHtml)
-          ? deleteEmptyTextObject(overlayStore, editingObjectId)
-          : updateTextObjectContent(overlayStore, editingObjectId, contentHtml)
-
-        commitOverlayStore(nextStore)
-      }
+      activeTextEditor.commit()
     }
 
     clearEditingState()
     setSelection(clearSelection())
-  }, [activeTextEditor, clearEditingState, commitOverlayStore, editingObjectId, overlayStore])
+  }, [activeTextEditor, clearEditingState, editingObjectId])
 
   const handleSave = useCallback(
     async (mode: SaveMode) => {
@@ -1444,32 +1586,46 @@ export function PdfViewer() {
   }, [confirmDiscardOrSaveChanges])
 
   const restoreHistorySelection = useCallback((history: OverlayHistory) => {
-    const selectedId = selection.selectedObjectId
-
-    if (selectedId && !history.present.objects.some((object) => object.id === selectedId)) {
-      setSelection(clearSelection())
-    }
+    const { store, selectedObjectId } = history.present
 
     clearEditingState()
-    overlayStoreRef.current = history.present
-    setOverlayStore(history.present)
-  }, [clearEditingState, selection.selectedObjectId])
+    overlayStoreRef.current = store
+    setOverlayStore(store)
+    setSelection(
+      selectedObjectId && store.objects.some((object) => object.id === selectedObjectId)
+        ? selectOverlayObject(selectedObjectId)
+        : clearSelection(),
+    )
+  }, [clearEditingState])
 
   const handleUndo = useCallback(() => {
+    // Flush any previewed-but-uncommitted edit (e.g. a focused inspector field) so it becomes a
+    // discrete entry first; otherwise undo could skip past it and the preview could leak into a
+    // later unrelated commit. No-ops when nothing is pending.
+    commitPendingOverlayStore()
     const nextHistory = undoOverlayHistory(overlayHistoryRef.current)
     overlayHistoryRef.current = nextHistory
     restoreHistorySelection(nextHistory)
-  }, [restoreHistorySelection])
+  }, [commitPendingOverlayStore, restoreHistorySelection])
 
   const handleRedo = useCallback(() => {
+    commitPendingOverlayStore()
     const nextHistory = redoOverlayHistory(overlayHistoryRef.current)
     overlayHistoryRef.current = nextHistory
     restoreHistorySelection(nextHistory)
-  }, [restoreHistorySelection])
+  }, [commitPendingOverlayStore, restoreHistorySelection])
 
   const navigateToPage = useCallback(
     (pageNumber: number) => {
       const nextPage = Math.min(Math.max(1, pageNumber), loadedPdf?.pageCount ?? 1)
+      const preservedScrollPosition =
+        pageViewMode === 'single' && scrollRef.current
+          ? {
+              left: scrollRef.current.scrollLeft,
+              top: scrollRef.current.scrollTop,
+            }
+          : null
+      pendingSinglePageScrollPositionRef.current = preservedScrollPosition
       setCurrentPage(nextPage)
 
       if (pageViewMode === 'continuous') {
@@ -1799,6 +1955,10 @@ export function PdfViewer() {
   }, [handleOpenPdfWithPrompt, handleViewerCommand])
 
   useEffect(() => {
+    selectionRef.current = selection
+  }, [selection])
+
+  useEffect(() => {
     void window.markan?.setDirtyState(overlayStore.isDirty)
   }, [overlayStore.isDirty])
 
@@ -2013,6 +2173,7 @@ export function PdfViewer() {
         canEditWidth={canEditSelectedSize}
         canEditHeight={canEditSelectedSize && selectedObject?.type !== 'text'}
         onGeometryChange={handleGeometryChange}
+        onGeometryCommit={commitPendingOverlayStore}
         rotation={rotation}
         onRotationChange={setRotation}
       />
@@ -2138,25 +2299,7 @@ export function PdfViewer() {
               document={loadedPdf.document}
               pageNumbers={pageNumbers}
               currentPage={currentPage}
-              onSelectPage={(pageNumber) => {
-                setCurrentPage(pageNumber)
-
-                if (pageViewMode === 'continuous') {
-                  requestAnimationFrame(() => {
-                    const container = scrollRef.current
-                    const page = container?.querySelector<HTMLElement>(
-                      `.pdf-page[data-page-number="${pageNumber}"]`,
-                    )
-
-                    if (container && page) {
-                      container.scrollTo({
-                        top: Math.max(0, page.offsetTop - 18),
-                        behavior: 'smooth',
-                      })
-                    }
-                  })
-                }
-              }}
+              onSelectPage={navigateToPage}
             />
           ) : (
             <div className="thumbnail-list" />
@@ -2215,7 +2358,12 @@ export function PdfViewer() {
           ) : (
             <div className={`page-stack page-stack-${pageViewMode}`}>
               {visiblePageNumbers.map((pageNumber) => {
-                const pageSize = pageSizes[pageNumber]
+                const pageSize = resolvePageViewportSize({
+                  pageNumber,
+                  pageSizes,
+                  pageBaseSize,
+                  scale,
+                })
                 const pageObjects = getObjectsForPage(overlayStore.objects, pageNumber - 1)
                 const { highlightObjects, nonHighlightObjects } = splitHighlightOverlayObjects(pageObjects)
                 const viewport = pageSize
@@ -2232,6 +2380,7 @@ export function PdfViewer() {
                     document={loadedPdf.document}
                     pageNumber={pageNumber}
                     scale={scale}
+                    reservedSize={pageSize}
                     onSizeChange={handlePageSizeChange}
                   >
                     {viewport ? (
@@ -2278,6 +2427,9 @@ export function PdfViewer() {
                         onFinishTextEdit={handleFinishTextEdit}
                         onRegisterTextEditor={setActiveTextEditor}
                         onTextEditorStateChange={setTextEditorState}
+                        onGestureStart={beginOverlayInteraction}
+                        onGestureCommit={commitOverlayInteraction}
+                        onGestureCancel={cancelOverlayInteraction}
                         onMoveObject={handleMoveObject}
                         onDuplicateObject={handleDuplicateObject}
                         onResizeObject={handleResizeObject}
@@ -2305,7 +2457,7 @@ export function PdfViewer() {
                   </InspectorSection>
                   <InspectorSection title="스타일">
                     <div className="insp-label">불투명도</div>
-                    <OpacityRow value={styleOpacity} onChange={handleSelectedOpacityChange} />
+                    <OpacityRow value={styleOpacity} onChange={handleOpacityPreview} onCommit={handleOpacityCommit} />
                   </InspectorSection>
                 </>
               ) : selectedInkObject || activeTool === 'ink' ? (
@@ -2316,11 +2468,12 @@ export function PdfViewer() {
                       value={selectedInkObject?.style.color ?? inkStyle.color}
                       onChange={(color) => {
                         if (selectedInkObject) {
-                          handleUpdateInkStyle(selectedInkObject.id, { color })
+                          handleUpdateInkStyle(selectedInkObject.id, { color }, { commit: false })
                         } else {
                           setInkStyle((current) => ({ ...current, color }))
                         }
                       }}
+                      onCommit={commitPendingOverlayStore}
                     />
                   </InspectorSection>
                   <InspectorSection title="스타일">
@@ -2331,14 +2484,15 @@ export function PdfViewer() {
                       value={selectedInkObject?.style.width ?? inkStyle.width}
                       onChange={(width) => {
                         if (selectedInkObject) {
-                          handleUpdateInkStyle(selectedInkObject.id, { width })
+                          handleUpdateInkStyle(selectedInkObject.id, { width }, { commit: false })
                         } else {
                           setInkStyle((current) => ({ ...current, width }))
                         }
                       }}
+                      onCommit={commitPendingOverlayStore}
                     />
                     <div className="insp-label">불투명도</div>
-                    <OpacityRow value={styleOpacity} onChange={handleSelectedOpacityChange} />
+                    <OpacityRow value={styleOpacity} onChange={handleOpacityPreview} onCommit={handleOpacityCommit} />
                   </InspectorSection>
                   {selectedInkObject ? renderLayerAndGeometry(selectedInkObject.frame) : null}
                 </>
@@ -2348,7 +2502,8 @@ export function PdfViewer() {
                     <ColorRow
                       label="선 색상"
                       value={shapeInspectorStyle.strokeColor}
-                      onChange={(strokeColor) => handleShapeStyleChange({ strokeColor })}
+                      onChange={(strokeColor) => handleShapeStyleChange({ strokeColor }, { commit: false })}
+                      onCommit={commitPendingOverlayStore}
                     />
                     {shapeSupportsFill ? (
                       <>
@@ -2370,8 +2525,9 @@ export function PdfViewer() {
                           value={shapeInspectorStyle.fillColor ?? '#ffffff'}
                           onChange={(fillColor) => {
                             lastShapeFillColorRef.current = fillColor
-                            handleShapeStyleChange({ fillColor })
+                            handleShapeStyleChange({ fillColor }, { commit: false })
                           }}
+                          onCommit={commitPendingOverlayStore}
                         />
                       </>
                     ) : null}
@@ -2382,7 +2538,8 @@ export function PdfViewer() {
                       min={1}
                       max={48}
                       value={shapeInspectorStyle.lineWidth}
-                      onChange={(lineWidth) => handleShapeStyleChange({ lineWidth })}
+                      onChange={(lineWidth) => handleShapeStyleChange({ lineWidth }, { commit: false })}
+                      onCommit={commitPendingOverlayStore}
                     />
                     <label className="insp-row">
                       <span className="insp-row-label">선 스타일</span>
@@ -2400,7 +2557,7 @@ export function PdfViewer() {
                       </InspectorSelect>
                     </label>
                     <div className="insp-label">불투명도</div>
-                    <OpacityRow value={styleOpacity} onChange={handleSelectedOpacityChange} />
+                    <OpacityRow value={styleOpacity} onChange={handleOpacityPreview} onCommit={handleOpacityCommit} />
                   </InspectorSection>
                   {selectedShapeObject ? renderLayerAndGeometry(selectedShapeObject.frame) : null}
                 </>
@@ -2408,7 +2565,7 @@ export function PdfViewer() {
                 <>
                   <InspectorSection title="스타일">
                     <div className="insp-label">불투명도</div>
-                    <OpacityRow value={styleOpacity} onChange={handleSelectedOpacityChange} />
+                    <OpacityRow value={styleOpacity} onChange={handleOpacityPreview} onCommit={handleOpacityCommit} />
                   </InspectorSection>
                   {renderLayerAndGeometry(selectedImageObject.frame)}
                 </>
@@ -2455,10 +2612,13 @@ export function PdfViewer() {
                         max={96}
                         value={selectedTextObject.style.fontSize}
                         onChange={(event) =>
-                          handleUpdateTextStyle(selectedTextObject.id, {
-                            fontSize: Number(event.currentTarget.value),
-                          })
+                          handleUpdateTextStyle(
+                            selectedTextObject.id,
+                            { fontSize: Number(event.currentTarget.value) },
+                            { commit: false },
+                          )
                         }
+                        onBlur={commitPendingOverlayStore}
                         aria-label="글자 크기"
                       />
                       <InspectorInput
@@ -2467,9 +2627,10 @@ export function PdfViewer() {
                         value={selectedTextObject.style.textColor}
                         onChange={(event) => {
                           const color = event.currentTarget.value
-                          handleUpdateTextStyle(selectedTextObject.id, { textColor: color })
+                          handleUpdateTextStyle(selectedTextObject.id, { textColor: color }, { commit: false })
                           activeTextEditor?.setTextColor(color)
                         }}
+                        onBlur={commitPendingOverlayStore}
                         aria-label="글자 색"
                       />
                     </div>
@@ -2613,8 +2774,9 @@ export function PdfViewer() {
                         } else if (backgroundColor !== 'transparent') {
                           setLastTextBackgroundColor(backgroundColor)
                         }
-                        handleUpdateTextStyle(selectedTextObject.id, { backgroundColor })
+                        handleUpdateTextStyle(selectedTextObject.id, { backgroundColor }, { commit: false })
                       }}
+                      onCommit={commitPendingOverlayStore}
                     />
                     <ColorRow
                       label="테두리"
@@ -2627,23 +2789,28 @@ export function PdfViewer() {
                         } else if (borderColor !== 'transparent') {
                           setLastTextBorderColor(borderColor)
                         }
-                        handleUpdateTextStyle(selectedTextObject.id, { borderColor })
+                        handleUpdateTextStyle(selectedTextObject.id, { borderColor }, { commit: false })
                       }}
+                      onCommit={commitPendingOverlayStore}
                     />
                     <NumberRow
                       label="여백"
                       min={0}
                       max={48}
                       value={selectedTextObject.style.padding}
-                      onChange={(padding) => handleUpdateTextStyle(selectedTextObject.id, { padding })}
+                      onChange={(padding) =>
+                        handleUpdateTextStyle(selectedTextObject.id, { padding }, { commit: false })
+                      }
+                      onCommit={commitPendingOverlayStore}
                     />
                     <NumberRow
                       label="문자 간격"
                       step={0.5}
                       value={selectedTextObject.style.letterSpacing}
                       onChange={(letterSpacing) =>
-                        handleUpdateTextStyle(selectedTextObject.id, { letterSpacing })
+                        handleUpdateTextStyle(selectedTextObject.id, { letterSpacing }, { commit: false })
                       }
+                      onCommit={commitPendingOverlayStore}
                     />
                     <NumberRow
                       label="줄 간격"
@@ -2651,12 +2818,15 @@ export function PdfViewer() {
                       max={3}
                       step={0.1}
                       value={selectedTextObject.style.lineHeight}
-                      onChange={(lineHeight) => handleUpdateTextStyle(selectedTextObject.id, { lineHeight })}
+                      onChange={(lineHeight) =>
+                        handleUpdateTextStyle(selectedTextObject.id, { lineHeight }, { commit: false })
+                      }
+                      onCommit={commitPendingOverlayStore}
                     />
                   </InspectorSection>
                   <InspectorSection title="스타일">
                     <div className="insp-label">불투명도</div>
-                    <OpacityRow value={styleOpacity} onChange={handleSelectedOpacityChange} />
+                    <OpacityRow value={styleOpacity} onChange={handleOpacityPreview} onCommit={handleOpacityCommit} />
                   </InspectorSection>
                   {renderLayerAndGeometry(selectedTextObject.frame)}
                 </>
@@ -2670,11 +2840,16 @@ export function PdfViewer() {
                       spellCheck={false}
                       rows={3}
                       onChange={(event) =>
-                        handleUpdateMathContent(selectedMathObject.id, {
-                          latex: event.currentTarget.value,
-                          displayMode: selectedMathObject.displayMode,
-                        })
+                        handleUpdateMathContent(
+                          selectedMathObject.id,
+                          {
+                            latex: event.currentTarget.value,
+                            displayMode: selectedMathObject.displayMode,
+                          },
+                          { commit: false },
+                        )
                       }
+                      onBlur={commitPendingOverlayStore}
                     />
                     <label className="insp-row">
                       <span className="insp-row-label">Display mode</span>
@@ -2697,12 +2872,16 @@ export function PdfViewer() {
                       min={8}
                       max={96}
                       value={selectedMathObject.fontSize}
-                      onChange={(fontSize) => handleMathFontSizeChange(selectedMathObject.id, fontSize)}
+                      onChange={(fontSize) =>
+                        handleMathFontSizeChange(selectedMathObject.id, fontSize, { commit: false })
+                      }
+                      onCommit={commitPendingOverlayStore}
                     />
                     <ColorRow
                       label="수식 색상"
                       value={selectedMathObject.color}
-                      onChange={(color) => handleUpdateMathStyle(selectedMathObject.id, { color })}
+                      onChange={(color) => handleUpdateMathStyle(selectedMathObject.id, { color }, { commit: false })}
+                      onCommit={commitPendingOverlayStore}
                     />
                     <ColorRow
                       label="배경"
@@ -2715,13 +2894,14 @@ export function PdfViewer() {
                         } else if (backgroundColor !== 'transparent') {
                           setLastMathBackgroundColor(backgroundColor)
                         }
-                        handleUpdateMathStyle(selectedMathObject.id, { backgroundColor })
+                        handleUpdateMathStyle(selectedMathObject.id, { backgroundColor }, { commit: false })
                       }}
+                      onCommit={commitPendingOverlayStore}
                     />
                   </InspectorSection>
                   <InspectorSection title="스타일">
                     <div className="insp-label">불투명도</div>
-                    <OpacityRow value={styleOpacity} onChange={handleSelectedOpacityChange} />
+                    <OpacityRow value={styleOpacity} onChange={handleOpacityPreview} onCommit={handleOpacityCommit} />
                   </InspectorSection>
                   {renderLayerAndGeometry(selectedMathObject.frame)}
                 </>
