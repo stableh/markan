@@ -29,9 +29,14 @@ export type VisiblePageInput = {
 }
 
 const roundZoom = (value: number) => Math.round(value * 100) / 100
+const floorFitZoom = (value: number) => Math.floor(value * 100) / 100
 
 export const clampZoom = (value: number) => {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, roundZoom(value)))
+}
+
+const clampFitZoom = (value: number) => {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, floorFitZoom(value)))
 }
 
 export const getNextZoom = (currentZoom: number, direction: ZoomDirection) => {
@@ -44,7 +49,7 @@ export const resolveFitWidthScale = ({ containerWidth, pageWidth }: FitWidthInpu
     return 1
   }
 
-  return clampZoom((containerWidth - VIEWER_HORIZONTAL_PADDING) / pageWidth)
+  return clampFitZoom((containerWidth - VIEWER_HORIZONTAL_PADDING) / pageWidth)
 }
 
 export const resolveFitPageScale = ({
@@ -59,7 +64,7 @@ export const resolveFitPageScale = ({
 
   const widthScale = (containerWidth - VIEWER_HORIZONTAL_PADDING) / pageWidth
   const heightScale = (containerHeight - FIT_PAGE_VERTICAL_CHROME) / pageHeight
-  return clampZoom(Math.min(widthScale, heightScale))
+  return clampFitZoom(Math.min(widthScale, heightScale))
 }
 
 export const getVisiblePageNumber = ({ scrollTop, viewportHeight, pages }: VisiblePageInput) => {

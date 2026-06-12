@@ -34,6 +34,30 @@ describe('viewerMath', () => {
     ).toBe(0.75)
   })
 
+
+  it('rounds fit-width scale down so rendered pages do not exceed available width', () => {
+    const containerWidth = 1000
+    const pageWidth = 526
+    const scale = resolveFitWidthScale({ containerWidth, pageWidth })
+
+    expect(pageWidth * scale).toBeLessThanOrEqual(containerWidth - 48)
+    expect(scale).toBe(1.8)
+  })
+
+  it('rounds fit-page scale down so rendered pages do not exceed available height', () => {
+    const containerHeight = 800
+    const pageHeight = 943
+    const scale = resolveFitPageScale({
+      containerWidth: 1600,
+      containerHeight,
+      pageWidth: 500,
+      pageHeight,
+    })
+
+    expect(pageHeight * scale).toBeLessThanOrEqual(containerHeight - 48)
+    expect(scale).toBe(0.79)
+  })
+
   it('returns the page whose vertical center is closest to the viewport center', () => {
     expect(
       getVisiblePageNumber({
