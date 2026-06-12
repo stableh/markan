@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { OverlayObject } from '@/overlay/OverlayObject'
 import {
-  createPdfanMetadata,
+  createMarkanMetadata,
   getMetadataPathForPdf,
-  isPdfanMetadata,
+  isMarkanMetadata,
   overlayStoreFromMetadata,
 } from './MetadataStore'
 
@@ -36,7 +36,7 @@ describe('MetadataStore', () => {
         opacity: 1,
       },
     }
-    const metadata = createPdfanMetadata({
+    const metadata = createMarkanMetadata({
       sourcePdfPath: '/tmp/exam.pdf',
       objects: [object],
     })
@@ -68,7 +68,7 @@ describe('MetadataStore', () => {
         opacity: 1,
       },
     }
-    const metadata = createPdfanMetadata({
+    const metadata = createMarkanMetadata({
       sourcePdfPath: '/tmp/exam.pdf',
       objects: [imageObject],
     })
@@ -83,12 +83,12 @@ describe('MetadataStore', () => {
   })
 
   it('rejects invalid metadata without throwing', () => {
-    expect(isPdfanMetadata(null)).toBe(false)
-    expect(isPdfanMetadata({ schemaVersion: 1, app: 'PDFan' })).toBe(false)
+    expect(isMarkanMetadata(null)).toBe(false)
+    expect(isMarkanMetadata({ schemaVersion: 1, app: 'MarkAn' })).toBe(false)
     expect(
-      isPdfanMetadata({
+      isMarkanMetadata({
         schemaVersion: 1,
-        app: 'PDFan',
+        app: 'MarkAn',
         sourcePdfPath: '/tmp/exam.pdf',
         savedAt: '2026-01-01T00:00:00.000Z',
         objects: [],

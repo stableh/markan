@@ -33,7 +33,7 @@ declare global {
     | 'math'
     | 'request-close'
 
-  type PdfanMetadata = import('../save/MetadataStore').PdfanMetadata
+  type MarkanMetadata = import('../save/MetadataStore').MarkanMetadata
   type SavePdfBridgeRequest = import('../save/SaveManager').SavePdfBridgeRequest
   type SaveBridgeResult = import('../save/SaveManager').SaveBridgeResult
 
@@ -46,7 +46,7 @@ declare global {
         fileName: string
         filePath: string
         data: Uint8Array
-        metadata: PdfanMetadata | null
+        metadata: MarkanMetadata | null
         metadataWarning?: string
       }
 
@@ -80,7 +80,7 @@ declare global {
       }
 
   interface Window {
-    pdfan?: {
+    markan?: {
       openPdf: () => Promise<OpenPdfResult>
       openImage: () => Promise<OpenImageResult>
       readClipboard: () => Promise<ClipboardPayload>

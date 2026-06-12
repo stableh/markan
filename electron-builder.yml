@@ -1,6 +1,6 @@
-appId: com.pdfan.app
-productName: PDFan
-copyright: Copyright © 2026 PDFan
+appId: com.markan.app
+productName: MarkAn
+copyright: Copyright © 2026 MarkAn
 
 directories:
   output: release

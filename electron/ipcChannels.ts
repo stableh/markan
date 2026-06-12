@@ -1,14 +1,14 @@
 export const IPC_CHANNELS = {
-  openPdf: 'pdfan:open-pdf',
-  openImage: 'pdfan:open-image',
-  readClipboard: 'pdfan:read-clipboard',
-  savePdf: 'pdfan:save-pdf',
-  confirmUnsaved: 'pdfan:confirm-unsaved',
-  showErrorDialog: 'pdfan:show-error-dialog',
-  setDirtyState: 'pdfan:set-dirty-state',
-  closeWindow: 'pdfan:close-window',
-  menuOpenPdf: 'pdfan:menu-open-pdf',
-  viewerCommand: 'pdfan:viewer-command',
+  openPdf: 'markan:open-pdf',
+  openImage: 'markan:open-image',
+  readClipboard: 'markan:read-clipboard',
+  savePdf: 'markan:save-pdf',
+  confirmUnsaved: 'markan:confirm-unsaved',
+  showErrorDialog: 'markan:show-error-dialog',
+  setDirtyState: 'markan:set-dirty-state',
+  closeWindow: 'markan:close-window',
+  menuOpenPdf: 'markan:menu-open-pdf',
+  viewerCommand: 'markan:viewer-command',
 } as const
 
 export type ViewerCommand =

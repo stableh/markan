@@ -14,7 +14,7 @@ import type {
   FlattenShape,
   FlattenTextImage,
 } from './FlattenRenderer'
-import { createPdfanMetadata } from './MetadataStore'
+import { createMarkanMetadata } from './MetadataStore'
 
 export type SaveMode = 'direct' | 'save-as'
 
@@ -42,7 +42,7 @@ export type SavePdfBridgeRequest = {
   highlightOverlays: FlattenHighlight[]
   inkOverlays: FlattenInk[]
   shapeOverlays: FlattenShape[]
-  metadata: ReturnType<typeof createPdfanMetadata>
+  metadata: ReturnType<typeof createMarkanMetadata>
 }
 
 export type SaveDocumentRequest = {
@@ -133,7 +133,7 @@ export const saveDocument = async ({
     end: object.end,
     style: object.style,
   }))
-  const metadata = createPdfanMetadata({
+  const metadata = createMarkanMetadata({
     sourcePdfPath: currentPath,
     objects: overlayStore.objects,
   })

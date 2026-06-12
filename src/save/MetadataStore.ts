@@ -1,9 +1,9 @@
 import { createOverlayObjectStore } from '../overlay/OverlayObjectStore'
 import type { OverlayObject } from '../overlay/OverlayObject'
 
-export type PdfanMetadata = {
+export type MarkanMetadata = {
   schemaVersion: 1
-  app: 'PDFan'
+  app: 'MarkAn'
   sourcePdfPath: string
   savedAt: string
   basePdfDataBase64?: string
@@ -16,7 +16,7 @@ const getRestartEditableObjects = (objects: OverlayObject[]) =>
 export const getMetadataPathForPdf = (pdfPath: string) =>
   pdfPath.toLowerCase().endsWith('.pdf') ? pdfPath.replace(/\.pdf$/i, '.pdfedit.json') : `${pdfPath}.pdfedit.json`
 
-export const createPdfanMetadata = ({
+export const createMarkanMetadata = ({
   sourcePdfPath,
   objects,
   savedAt = new Date().toISOString(),
@@ -26,30 +26,30 @@ export const createPdfanMetadata = ({
   objects: OverlayObject[]
   savedAt?: string
   basePdfDataBase64?: string
-}): PdfanMetadata => ({
+}): MarkanMetadata => ({
   schemaVersion: 1,
-  app: 'PDFan',
+  app: 'MarkAn',
   sourcePdfPath,
   savedAt,
   basePdfDataBase64,
   objects: getRestartEditableObjects(objects),
 })
 
-export const isPdfanMetadata = (value: unknown): value is PdfanMetadata => {
+export const isMarkanMetadata = (value: unknown): value is MarkanMetadata => {
   if (!value || typeof value !== 'object') {
     return false
   }
 
-  const metadata = value as PdfanMetadata
+  const metadata = value as MarkanMetadata
 
   return (
     metadata.schemaVersion === 1 &&
-    metadata.app === 'PDFan' &&
+    metadata.app === 'MarkAn' &&
     typeof metadata.sourcePdfPath === 'string' &&
     typeof metadata.savedAt === 'string' &&
     Array.isArray(metadata.objects)
   )
 }
 
-export const overlayStoreFromMetadata = (metadata: PdfanMetadata) =>
+export const overlayStoreFromMetadata = (metadata: MarkanMetadata) =>
   createOverlayObjectStore(getRestartEditableObjects(metadata.objects), false)

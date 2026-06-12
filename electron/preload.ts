@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS, type ViewerCommand } from './ipcChannels'
 import type { SavePdfBridgeRequest, SaveBridgeResult } from '../src/save/SaveManager'
-import type { PdfanMetadata } from '../src/save/MetadataStore'
+import type { MarkanMetadata } from '../src/save/MetadataStore'
 
 export type OpenPdfResult =
   | {
@@ -12,7 +12,7 @@ export type OpenPdfResult =
       fileName: string
       filePath: string
       data: Uint8Array
-      metadata: PdfanMetadata | null
+      metadata: MarkanMetadata | null
       metadataWarning?: string
     }
 
@@ -45,7 +45,7 @@ export type ClipboardPayload =
       naturalHeight: number
     }
 
-export type PdfanBridge = {
+export type MarkanBridge = {
   openPdf: () => Promise<OpenPdfResult>
   openImage: () => Promise<OpenImageResult>
   readClipboard: () => Promise<ClipboardPayload>
@@ -58,7 +58,7 @@ export type PdfanBridge = {
   onViewerCommand: (callback: (command: ViewerCommand) => void) => () => void
 }
 
-const bridge: PdfanBridge = {
+const bridge: MarkanBridge = {
   openPdf: () => ipcRenderer.invoke(IPC_CHANNELS.openPdf),
   openImage: () => ipcRenderer.invoke(IPC_CHANNELS.openImage),
   readClipboard: () => ipcRenderer.invoke(IPC_CHANNELS.readClipboard),
@@ -79,4 +79,4 @@ const bridge: PdfanBridge = {
   },
 }
 
-contextBridge.exposeInMainWorld('pdfan', bridge)
+contextBridge.exposeInMainWorld('markan', bridge)

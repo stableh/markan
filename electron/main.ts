@@ -13,8 +13,8 @@ import {
 import { createPdfExportArtifacts } from '../src/save/PdfExportService'
 import {
   getMetadataPathForPdf,
-  isPdfanMetadata,
-  type PdfanMetadata,
+  isMarkanMetadata,
+  type MarkanMetadata,
 } from '../src/save/MetadataStore'
 import { IPC_CHANNELS, type ViewerCommand } from './ipcChannels'
 
@@ -33,7 +33,7 @@ type OpenPdfResult =
       fileName: string
       filePath: string
       data: Uint8Array
-      metadata: PdfanMetadata | null
+      metadata: MarkanMetadata | null
       metadataWarning?: string
     }
 
@@ -75,7 +75,7 @@ type SavePdfRequest = {
   highlightOverlays?: FlattenHighlight[]
   inkOverlays?: FlattenInk[]
   shapeOverlays?: FlattenShape[]
-  metadata: PdfanMetadata
+  metadata: MarkanMetadata
 }
 
 type SavePdfResult =
@@ -157,7 +157,7 @@ const isNotFoundError = (error: unknown) =>
 
 const readMetadataForPdf = async (
   pdfPath: string,
-): Promise<{ metadata: PdfanMetadata | null; warning?: string }> => {
+): Promise<{ metadata: MarkanMetadata | null; warning?: string }> => {
   // Prefer the central store; fall back to a legacy sibling .pdfedit.json so existing edits
   // still load (they migrate to the central store on the next save).
   const candidatePaths = [getMetadataStorePath(pdfPath), getMetadataPathForPdf(pdfPath)]
@@ -167,7 +167,7 @@ const readMetadataForPdf = async (
       const metadataText = await readFile(metadataPath, 'utf8')
       const metadata = JSON.parse(metadataText)
 
-      if (!isPdfanMetadata(metadata)) {
+      if (!isMarkanMetadata(metadata)) {
         return {
           metadata: null,
           warning: 'The saved edit metadata is invalid, so editable overlays were not restored.',
@@ -324,7 +324,7 @@ const savePdf = async (_event: Electron.IpcMainInvokeEvent, request: SavePdfRequ
     inkOverlays,
     shapeOverlays,
   })
-  const metadata: PdfanMetadata = {
+  const metadata: MarkanMetadata = {
     ...request.metadata,
     sourcePdfPath: targetPath,
     savedAt: new Date().toISOString(),
@@ -588,12 +588,12 @@ const createMenu = () => {
       label: 'Help',
       submenu: [
         {
-          label: 'PDFan Help',
+          label: 'MarkAn Help',
           click: () =>
             dialog.showMessageBox({
               type: 'info',
-              title: 'PDFan Help',
-              message: 'PDFan',
+              title: 'MarkAn Help',
+              message: 'MarkAn',
               detail: 'Open a PDF, add annotations, and save a flattened copy with editable sidecar metadata.',
             }),
         },
@@ -608,9 +608,9 @@ const createWindow = async () => {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 820,
-    minWidth: 1090,
-    minHeight: 680,
-    title: 'PDFan',
+    minWidth: 860,
+    minHeight: 560,
+    title: 'MarkAn',
     backgroundColor: '#0b0f14',
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 16, y: 12 },
@@ -649,7 +649,7 @@ app.whenReady().then(async () => {
   ipcMain.handle(IPC_CHANNELS.savePdf, savePdf)
   ipcMain.handle(IPC_CHANNELS.confirmUnsaved, showUnsavedChangesDialog)
   ipcMain.handle(IPC_CHANNELS.showErrorDialog, async (_event, payload: { title: string; message: string }) => {
-    const title = payload.title || 'PDFan'
+    const title = payload.title || 'MarkAn'
     const message = payload.message || 'An unexpected error occurred.'
 
     if (mainWindow) {
