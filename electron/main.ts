@@ -102,8 +102,8 @@ const applyDockIcon = () => {
   }
 
   const iconPath = isDev
-    ? path.join(__dirname, '../../public/logo/mac_logo_dark_background.png')
-    : path.join(__dirname, '../renderer/logo/mac_logo_dark_background.png')
+    ? path.join(__dirname, '../../public/logo/logo-iOS-Dark-1024x1024@1x.png')
+    : path.join(__dirname, '../renderer/logo/logo-iOS-Dark-1024x1024@1x.png')
   const icon = nativeImage.createFromPath(iconPath)
 
   if (!icon.isEmpty()) {
