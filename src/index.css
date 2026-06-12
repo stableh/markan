@@ -138,6 +138,12 @@ select:focus-visible {
   background: transparent;
 }
 
+/* Where the vertical and horizontal scrollbars meet. Unstyled, Chromium paints it white, which
+   shows as a bright square on the dark workspace when both scrollbars are visible (e.g. zoomed in). */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .app-shell {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) 34px;
