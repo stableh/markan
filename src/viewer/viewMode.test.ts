@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_PAGE_VIEW_MODE, clampPageNumber, getPageNumberForNavigation } from './viewMode'
+import { DEFAULT_PAGE_VIEW_MODE, clampPageNumber, getPageNumberForNavigation, restoreScrollPosition } from './viewMode'
 
 describe('viewMode', () => {
   it('uses single page as the default viewer mode', () => {
@@ -20,5 +20,13 @@ describe('viewMode', () => {
     expect(getPageNumberForNavigation(10, 10, 'next-page')).toBe(10)
     expect(getPageNumberForNavigation(4, 10, 'first-page')).toBe(1)
     expect(getPageNumberForNavigation(4, 10, 'last-page')).toBe(10)
+  })
+
+  it('restores both scroll axes for single-page page changes', () => {
+    const target = { scrollLeft: 0, scrollTop: 0 }
+
+    restoreScrollPosition(target, { left: 320, top: 140 })
+
+    expect(target).toEqual({ scrollLeft: 320, scrollTop: 140 })
   })
 })

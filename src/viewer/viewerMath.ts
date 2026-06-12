@@ -16,6 +16,13 @@ export type FitPageInput = FitWidthInput & {
   pageHeight: number
 }
 
+export type PageViewportSizeInput = {
+  pageNumber: number
+  pageSizes: Record<number, { width: number; height: number; pageNumber?: number }>
+  pageBaseSize: { width: number; height: number } | null
+  scale: number
+}
+
 export type PagePosition = {
   pageNumber: number
   top: number
@@ -65,6 +72,31 @@ export const resolveFitPageScale = ({
   const widthScale = (containerWidth - VIEWER_HORIZONTAL_PADDING) / pageWidth
   const heightScale = (containerHeight - FIT_PAGE_VERTICAL_CHROME) / pageHeight
   return clampFitZoom(Math.min(widthScale, heightScale))
+}
+
+export const resolvePageViewportSize = ({
+  pageNumber,
+  pageSizes,
+  pageBaseSize,
+  scale,
+}: PageViewportSizeInput) => {
+  const renderedSize = pageSizes[pageNumber]
+
+  if (renderedSize) {
+    return {
+      width: renderedSize.width,
+      height: renderedSize.height,
+    }
+  }
+
+  if (!pageBaseSize) {
+    return null
+  }
+
+  return {
+    width: pageBaseSize.width * scale,
+    height: pageBaseSize.height * scale,
+  }
 }
 
 export const getVisiblePageNumber = ({ scrollTop, viewportHeight, pages }: VisiblePageInput) => {

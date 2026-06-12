@@ -5,6 +5,7 @@ import {
   getVisiblePageNumber,
   resolveFitPageScale,
   resolveFitWidthScale,
+  resolvePageViewportSize,
 } from './viewerMath'
 
 describe('viewerMath', () => {
@@ -56,6 +57,28 @@ describe('viewerMath', () => {
 
     expect(pageHeight * scale).toBeLessThanOrEqual(containerHeight - 48)
     expect(scale).toBe(0.79)
+  })
+
+  it('resolves a page viewport from rendered size when available', () => {
+    expect(
+      resolvePageViewportSize({
+        pageNumber: 2,
+        pageSizes: { 2: { pageNumber: 2, width: 720, height: 960 } },
+        pageBaseSize: { width: 600, height: 800 },
+        scale: 1.5,
+      }),
+    ).toEqual({ width: 720, height: 960 })
+  })
+
+  it('falls back to base page size and scale before the page reports its rendered size', () => {
+    expect(
+      resolvePageViewportSize({
+        pageNumber: 3,
+        pageSizes: {},
+        pageBaseSize: { width: 600, height: 800 },
+        scale: 1.25,
+      }),
+    ).toEqual({ width: 750, height: 1000 })
   })
 
   it('returns the page whose vertical center is closest to the viewport center', () => {

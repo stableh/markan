@@ -7,6 +7,11 @@ type PdfPageCanvasProps = {
   pageNumber: number
   scale: number
   children?: ReactNode
+  // Known/estimated page size, applied as a min-size so the surface reserves its space
+  // immediately on mount. Without this, a freshly mounted page collapses to the bare <canvas>
+  // default (~300x150) until the async render finishes — which makes the scroll container shrink
+  // and clamps any scroll-position restore (e.g. single-page navigation while zoomed in).
+  reservedSize?: { width: number; height: number } | null
   onSizeChange: (pageNumber: number, size: { width: number; height: number }) => void
 }
 
@@ -15,6 +20,7 @@ export function PdfPageCanvas({
   document,
   pageNumber,
   scale,
+  reservedSize,
   onSizeChange,
 }: PdfPageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -99,7 +105,12 @@ export function PdfPageCanvas({
   return (
     <section className="pdf-page" data-page-number={pageNumber}>
       {error ? <div className="pdf-page-error">{error}</div> : null}
-      <div className="pdf-page-surface">
+      <div
+        className="pdf-page-surface"
+        style={
+          reservedSize ? { minWidth: reservedSize.width, minHeight: reservedSize.height } : undefined
+        }
+      >
         <canvas ref={canvasRef} aria-label={`Page ${pageNumber}`} />
         <div ref={textLayerRef} className="textLayer pdf-text-layer" />
         {children}
