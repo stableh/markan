@@ -101,9 +101,11 @@ const applyDockIcon = () => {
     return
   }
 
+  // Use the macOS-padded icon (artwork inset to the standard ~80% safe area). The iOS asset is
+  // full-bleed, which renders oversized in the Dock next to other apps.
   const iconPath = isDev
-    ? path.join(__dirname, '../../public/logo/logo-iOS-Dark-1024x1024@1x.png')
-    : path.join(__dirname, '../renderer/logo/logo-iOS-Dark-1024x1024@1x.png')
+    ? path.join(__dirname, '../../public/logo/logo-macOS-Dark-1024x1024.png')
+    : path.join(__dirname, '../renderer/logo/logo-macOS-Dark-1024x1024.png')
   const icon = nativeImage.createFromPath(iconPath)
 
   if (!icon.isEmpty()) {
