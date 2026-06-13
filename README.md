@@ -1,268 +1,137 @@
-# React + Tailwind CSS v4.0 + Vite 7 Boilerplate
+<p align="center">
+  <img src="public/logo/logo.svg" alt="Markan logo" width="120" />
+</p>
 
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-7.0-646CFF?logo=vite&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-v4.0-06B6D4?logo=tailwindcss&logoColor=white)
-![License](https://img.shields.io/github/license/Anhye0n/react-tailwind4-vite7-boilerplate)
+<h1 align="center">Markan</h1>
 
-A modern, high-performance React boilerplate with the latest versions of React 19, TypeScript, Vite 7, React Router, and Tailwind CSS v4.0.
+<p align="center">
+  A cross-platform desktop PDF annotation and editing app built with Electron, React, and TypeScript.
+</p>
 
-## ✨ Features
+<p align="center">
+  <img alt="Electron" src="https://img.shields.io/badge/Electron-42-47848F?logo=electron&logoColor=white" />
+  <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white" />
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white" />
+</p>
 
-- ⚡ **Vite 7.0** - Lightning-fast development server with HMR
-- ⚛️ **React 19** - Latest React with TypeScript support
-- 🎨 **Tailwind CSS v4.0** - CSS-first configuration with `@theme` directive
-- 🌐 **React Router v7** - Client-side routing
-- 🔒 **TypeScript** - Full type safety
-- 📱 **Responsive Design** - Mobile-first approach
-- 🚀 **Optimized Build** - Production-ready builds
+## Overview
 
-## 🆕 What's New in Tailwind CSS v4.0
+Markan is a desktop PDF workspace for reading, annotating, and exporting PDFs. It focuses on a fast viewer experience with editable overlay objects, then flattens those edits into a standard PDF when saving or exporting.
 
-Tailwind CSS v4.0 brings significant improvements:
+The app is built as an Electron desktop application, so the product direction is cross-platform. Current packaging scripts include macOS packaging, and the core application stack is not tied to a web-only deployment model.
 
-- **CSS-First Configuration**: Configure your design system directly in CSS using `@theme`
-- **Vite Plugin Integration**: Native Vite plugin for better performance
-- **Auto Content Detection**: No manual content configuration needed
-- **Performance Boost**: 5x faster builds, 100x faster incremental builds
-- **Simplified Installation**: Fewer dependencies, zero configuration
+## Features
 
-## 🚀 Quick Start
+- Open and render PDF documents with PDF.js
+- Page thumbnails, page navigation, zoom controls, and fit modes
+- Editable overlay objects stored separately from the PDF canvas
+- Rich text boxes with formatting controls
+- PDF text-selection based highlighting
+- Ink drawing, shapes, images, and math overlays
+- Object selection, move, resize, duplicate, delete, and layer ordering
+- Undo and redo for overlay editing
+- Save and save-as flows with PDF flattening
+- App-managed metadata for restoring editable overlays
+- Settings dialog with app version and Korean/English language selection
+- Dark workspace UI with shadcn-style local UI primitives
+
+## Tech Stack
+
+| Area | Technology |
+| --- | --- |
+| Desktop runtime | Electron, electron-vite |
+| UI | React, TypeScript |
+| Styling | Tailwind CSS, custom CSS tokens |
+| PDF rendering | PDF.js |
+| PDF writing/export | pdf-lib |
+| Rich text | TipTap |
+| UI primitives | Radix UI, local shadcn-style components |
+| Icons | lucide-react |
+| Tests | Vitest |
+| Build | Vite, TypeScript |
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ 
-- npm or yarn
+- Node.js 20 or newer
+- npm
 
-### Installation
+### Install
 
-1. **Clone this repository**
-   ```bash
-   git clone https://github.com/Anhye0n/react-tailwind4-vite7-boilerplate.git
-   cd react-tailwind4-vite7-boilerplate
-   ```
+```bash
+npm install
+```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+### Run the App
 
-3. **Start development server**
-   ```bash
-   npm run dev
-   ```
+```bash
+npm run dev
+```
 
-4. **Open your browser**
-   ```
-   http://localhost:5173
-   ```
+### Build
 
-## 📦 Scripts
+```bash
+npm run build
+```
+
+### Package for macOS
+
+```bash
+npm run build:mac
+```
+
+## Scripts
 
 | Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run preview` | Preview production build |
+| --- | --- |
+| `npm run dev` | Start the Electron development app |
+| `npm run build` | Type-check and build the Electron app |
+| `npm run build:mac` | Build and package the macOS app |
+| `npm run preview` | Preview the built Electron app |
 | `npm run lint` | Run ESLint |
+| `npm test` | Run Vitest test suite |
 
-## 🏗️ Project Structure
+## Project Structure
 
-```
+```text
+electron/
+  main.ts             Electron main process, menu, dialogs, IPC, save handling
+  preload.ts          Safe renderer bridge
+  ipcChannels.ts      Shared IPC channel and command types
+
 src/
-├── components/          # Reusable UI components
-│   ├── Layout.tsx      # Main layout wrapper
-│   └── Navigation.tsx  # Navigation component
-├── pages/              # Page components
-│   ├── Home.tsx        # Home page
-│   └── About.tsx       # About page
-├── App.tsx             # Main App component with routing
-├── main.tsx            # Application entry point
-├── index.css           # Global styles with Tailwind imports
-└── vite-env.d.ts       # Vite type definitions
+  annotations/        PDF text-selection and highlight helpers
+  components/         Shared layout and UI primitives
+  coordinates/        PDF/viewport coordinate conversion
+  i18n/               Language metadata and translation helpers
+  math/               Math input, rendering, and flattening
+  overlay/            Overlay object model, layer rendering, selection, history
+  save/               Metadata, base PDF storage, flattening, export services
+  settings/           Settings dialog
+  text/               Rich text editing and flattening helpers
+  tools/              Tool state and keyboard command resolution
+  viewer/             PDF viewer, pages, thumbnails, zoom, navigation
+
+public/
+  logo/               Markan logo and app icon assets
+  fonts/              Bundled Pretendard font assets
 ```
 
-## 🎨 Tailwind CSS v4.0 Configuration
+## Design Principles
 
-This boilerplate uses the new CSS-first configuration approach:
+- Keep PDF rendering and editable overlays separate while editing.
+- Store persistent overlay positions in PDF page coordinates.
+- Treat zoom and scroll as view state only.
+- Flatten overlays only during save or export.
+- Keep file I/O in the Electron main process behind a safe preload bridge.
+- Prefer reusable local components before adding new UI dependencies.
 
-### CSS Configuration (`src/index.css`)
-```css
-@import "tailwindcss";
+## Language
 
-@theme {
-  --font-display: "system-ui", "sans-serif";
-  --color-primary: #3b82f6;
-  --color-secondary: #6366f1;
-}
-```
+The application currently supports Korean and English language settings. The settings dialog can be opened from the app menu or with `Cmd/Ctrl + ,`.
 
-### Vite Integration (`vite.config.ts`)
-```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
+## License
 
-export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-  ],
-})
-```
-
-## 🔧 Customization
-
-### Adding Custom Colors
-```css
-@theme {
-  --color-brand: #ff6b6b;
-  --color-accent: #4ecdc4;
-}
-```
-
-### Custom Fonts
-```css
-@theme {
-  --font-heading: "Inter", "system-ui", "sans-serif";
-  --font-body: "Open Sans", "system-ui", "sans-serif";
-}
-```
-
-### Breakpoints
-```css
-@theme {
-  --breakpoint-tablet: 640px;
-  --breakpoint-laptop: 1024px;
-  --breakpoint-desktop: 1280px;
-}
-```
-
-## 🌐 Routing
-
-This boilerplate includes React Router v7 setup:
-
-```typescript
-// Add new routes in src/App.tsx
-<Routes>
-  <Route path="/" element={<Home />} />
-  <Route path="/about" element={<About />} />
-  <Route path="/contact" element={<Contact />} />
-</Routes>
-```
-
-## 📱 Components
-
-### Layout Component
-- Responsive navigation
-- Main content wrapper
-- Consistent spacing
-
-### Navigation Component
-- Mobile-friendly design
-- Active link highlighting
-- Smooth transitions
-
-## 🏷️ Tech Stack
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| React | ^19.1.0 | UI Library |
-| TypeScript | ~5.8.3 | Type Safety |
-| Vite | ^7.0.4 | Build Tool |
-| Tailwind CSS | ^4.1.11 | Styling |
-| React Router | ^7.7.1 | Routing |
-
-## 🎯 Best Practices
-
-- **Component Organization**: Separate components and pages
-- **TypeScript**: Strict typing for better development experience
-- **CSS-in-CSS**: Use Tailwind's new `@theme` directive for customization
-- **Responsive Design**: Mobile-first approach with Tailwind utilities
-- **Performance**: Optimized builds with Vite
-
-## 🚀 Deployment
-
-### Build for Production
-```bash
-npm run build
-```
-
-### Deploy to Vercel
-```bash
-npx vercel --prod
-```
-
-### Deploy to Netlify
-```bash
-npm run build
-# Upload dist/ folder to Netlify
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆚 Why This Boilerplate?
-
-| Feature | This Boilerplate | Others |
-|---------|------------------|---------|
-| Tailwind CSS | v4.0 (Latest) | v3.x |
-| Vite | v7.0 (Latest) | v4.x - v6.x |
-| React | v19 (Latest) | v18.x |
-| Configuration | CSS-first with `@theme` | JavaScript config |
-| Performance | 5x faster builds | Standard |
-| Setup Time | < 2 minutes | 5-10 minutes |
-
-## 📊 Performance
-
-- **Development server startup**: < 500ms
-- **Hot Module Replacement**: < 50ms
-- **Production build**: ~2-3 seconds
-- **Bundle size**: Optimized with tree-shaking
-
-## 🔄 Updates
-
-This boilerplate is regularly updated to include:
-- Latest React features and best practices
-- Tailwind CSS v4.0 improvements
-- Vite performance optimizations
-- Security updates
-
-## 📋 Browser Support
-
-- Chrome 111+
-- Safari 16.4+
-- Firefox 128+
-- Edge 111+
-
-## 🙏 Acknowledgments
-
-- [Vite](https://vitejs.dev/) - Next generation frontend tooling
-- [React](https://reactjs.org/) - A JavaScript library for building user interfaces
-- [Tailwind CSS](https://tailwindcss.com/) - A utility-first CSS framework
-- [React Router](https://reactrouter.com/) - Declarative routing for React
-
-## 📈 GitHub Stats
-
-![GitHub stars](https://img.shields.io/github/stars/Anhye0n/react-tailwind4-vite7-boilerplate?style=social)
-![GitHub forks](https://img.shields.io/github/forks/Anhye0n/react-tailwind4-vite7-boilerplate?style=social)
-![GitHub issues](https://img.shields.io/github/issues/Anhye0n/react-tailwind4-vite7-boilerplate)
-![GitHub license](https://img.shields.io/github/license/Anhye0n/react-tailwind4-vite7-boilerplate)
-
----
-
-**Happy coding! 🎉**
-
-For questions or support, please [open an issue](https://github.com/Anhye0n/react-tailwind4-vite7-boilerplate/issues) on GitHub.
-
-**⭐ If this boilerplate helped you, please give it a star!**
+No license has been specified yet.
