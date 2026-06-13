@@ -20,6 +20,10 @@ type SettingsDialogProps = {
   onOpenChange: (open: boolean) => void
 }
 
+export const preventSettingsDialogAutoFocus = (event: Event) => {
+  event.preventDefault()
+}
+
 export function SettingsDialog({
   open,
   appVersion,
@@ -30,7 +34,10 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="settings-dialog">
+      <DialogContent
+        className="settings-dialog"
+        onOpenAutoFocus={preventSettingsDialogAutoFocus}
+      >
         <DialogHeader>
           <DialogTitle>{translate('settings.title')}</DialogTitle>
           <DialogDescription>{translate('settings.description')}</DialogDescription>
