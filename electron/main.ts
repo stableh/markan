@@ -390,6 +390,12 @@ const createMenu = () => {
       submenu: [
         { role: 'about' },
         { type: 'separator' },
+        {
+          label: '설정...',
+          accelerator: 'CommandOrControl+,',
+          click: () => sendViewerCommand('settings'),
+        },
+        { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
         { role: 'hide' },

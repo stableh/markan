@@ -5,6 +5,7 @@ export type KeyboardCommand =
   | 'open'
   | 'save'
   | 'save-as'
+  | 'settings'
   | 'zoom-in'
   | 'zoom-out'
   | 'actual-size'
@@ -75,6 +76,10 @@ export const resolveKeyboardCommand = ({
 
   if (metaKey && normalized === 's') {
     return shiftKey ? 'save-as' : 'save'
+  }
+
+  if (metaKey && key === ',') {
+    return 'settings'
   }
 
   if (metaKey && normalized === 'z') {

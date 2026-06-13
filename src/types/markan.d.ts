@@ -17,6 +17,7 @@ declare global {
     | 'paste'
     | 'save'
     | 'save-as'
+    | 'settings'
     | 'undo'
     | 'redo'
     | 'delete'

@@ -50,6 +50,7 @@ describe('ToolController', () => {
     expect(resolveKeyboardCommand({ key: 'v', metaKey: true, ctrlKey: true })).toBe('select')
     expect(resolveKeyboardCommand({ key: 's', metaKey: true })).toBe('save')
     expect(resolveKeyboardCommand({ key: 's', metaKey: true, shiftKey: true })).toBe('save-as')
+    expect(resolveKeyboardCommand({ key: ',', metaKey: true })).toBe('settings')
     expect(resolveKeyboardCommand({ key: '+', metaKey: true })).toBe('zoom-in')
     expect(resolveKeyboardCommand({ key: '-', metaKey: true })).toBe('zoom-out')
     expect(resolveKeyboardCommand({ key: '0', metaKey: true })).toBe('actual-size')
