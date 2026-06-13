@@ -682,3 +682,36 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,windows,jetbrains,web,vs,node,react
+
+### MarkAn local, generated, and AI tooling ###
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+
+# Build/package output
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# OS/editor local files
+.DS_Store
+*.swp
+*.swo
+public/logo/logo.icon/
+
+# AI agent/tooling files
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.codex/
+.claude/
+.cursor/
+.windsurf/
+.aider*
+.mcp.json
+.vscode/mcp.json
+docs/superpowers/
