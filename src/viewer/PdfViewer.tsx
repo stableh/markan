@@ -39,6 +39,7 @@ import {
   Rows3,
   Save,
   Search,
+  Settings,
   FileUp,
   Sigma,
   Square,
@@ -87,6 +88,14 @@ import {
   type MathOverlayStyle,
 } from '@/overlay/OverlayObjectStore'
 import { MathInputModal } from '@/math/MathInputModal'
+import {
+  APP_VERSION,
+  createTranslator,
+  getStoredLanguage,
+  storeLanguage,
+  type LanguageCode,
+} from '@/i18n/languages'
+import { SettingsDialog } from '@/settings/SettingsDialog'
 import {
   EditorButton,
   EditorIconButton,
@@ -530,6 +539,8 @@ export function PdfViewer() {
   const [showThumbnails, setShowThumbnails] = useState(true)
   const [showInspector, setShowInspector] = useState(true)
   const [rotation, setRotation] = useState(0)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [language, setLanguage] = useState<LanguageCode>(() => getStoredLanguage())
   const [mathInput, setMathInput] = useState<
     | { mode: 'create'; pageIndex: number; origin: PdfPoint }
     | { mode: 'edit'; objectId: string }
@@ -587,6 +598,7 @@ export function PdfViewer() {
   const selectedInkObject = selectedObject?.type === 'ink' ? selectedObject : null
   const selectedShapeObject = selectedObject?.type === 'shape' ? selectedObject : null
   const selectedMathObject = selectedObject?.type === 'math' ? selectedObject : null
+  const translate = useMemo(() => createTranslator(language), [language])
   const activeShapeKind = selectedShapeObject?.kind ?? (isShapeTool(activeTool) ? activeTool : null)
   const shapeInspectorStyle = selectedShapeObject?.style ?? shapeStyle
   const shapeSupportsFill = activeShapeKind === 'rectangle' || activeShapeKind === 'ellipse'
@@ -698,6 +710,11 @@ export function PdfViewer() {
 
     setError(message)
     void window.markan?.showErrorDialog(title, message)
+  }, [])
+
+  const handleLanguageChange = useCallback((nextLanguage: LanguageCode) => {
+    setLanguage(nextLanguage)
+    storeLanguage(nextLanguage)
   }, [])
 
   const clearEditingState = useCallback(() => {
@@ -1833,6 +1850,11 @@ export function PdfViewer() {
         return
       }
 
+      if (command === 'settings') {
+        setSettingsOpen(true)
+        return
+      }
+
       if (command === 'undo') {
         handleUndo()
         return
@@ -2195,6 +2217,13 @@ export function PdfViewer() {
           <div className="title-bar-right">
             <EditorIconButton type="button" aria-label="검색" disabled>
               <Search size={16} />
+            </EditorIconButton>
+            <EditorIconButton
+              type="button"
+              aria-label={translate('settings.openAriaLabel')}
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings size={16} />
             </EditorIconButton>
           </div>
         </div>
@@ -3020,6 +3049,15 @@ export function PdfViewer() {
           onCancel={handleCancelMath}
         />
       ) : null}
+
+      <SettingsDialog
+        open={settingsOpen}
+        appVersion={APP_VERSION}
+        language={language}
+        translate={translate}
+        onLanguageChange={handleLanguageChange}
+        onOpenChange={setSettingsOpen}
+      />
     </div>
     </TooltipProvider>
   )
